@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -20,6 +21,9 @@ class UserFactory extends Factory
     /**
      * Define the model's default state.
      *
+     * Default adalah operator yang terikat instansi — TIDAK melanggar
+     * CHECK constraint users_role_institution_check.
+     *
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -30,7 +34,31 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'role' => 'operator',
+            'institution_id' => Institution::factory(),
         ];
+    }
+
+    /**
+     * State admin: institution_id NULL (sesuai CHECK constraint).
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin',
+            'institution_id' => null,
+        ]);
+    }
+
+    /**
+     * State operator: wajib terikat instansi (dibuatkan bila tidak diberikan).
+     */
+    public function operator(?Institution $institution = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'operator',
+            'institution_id' => $institution?->id ?? Institution::factory(),
+        ]);
     }
 
     /**

@@ -97,6 +97,11 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Emulated prepares wajib untuk koneksi transaction-mode pooler Supabase (port 6543):
+            // prepared statement server-side di dalam transaksi membuat transaksi aborted (SQLSTATE 25P02).
+            'options' => env('DB_EMULATE_PREPARES', true)
+                ? [\PDO::ATTR_EMULATE_PREPARES => true]
+                : [],
         ],
 
         'sqlsrv' => [

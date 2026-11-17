@@ -7,6 +7,13 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
+     * Jalankan tanpa transaksi terbungkus: koneksi Supabase memakai
+     * transaction-mode pooler (port 6543) yang dapat membatalkan
+     * transaksi multi-statement milik migrator (SQLSTATE 25P02).
+     */
+    public $withinTransaction = false;
+
+    /**
      * Run the migrations.
      */
     public function up(): void

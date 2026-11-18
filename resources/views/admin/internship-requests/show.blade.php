@@ -61,6 +61,43 @@
                         <dt>Nomor induk</dt><dd>{{ $applicant->student_number ?: '—' }}</dd>
                         <dt>Jurusan</dt><dd>{{ $applicant->school_major ?: '—' }}</dd>
                     </dl>
+
+                    @if ($internshipRequest->status === 'approved')
+                        @php
+                            $tokenHistory = $applicant->registrationTokens->sortByDesc('id');
+                            $latestToken = $tokenHistory->first();
+                            $hasUsedToken = $tokenHistory->contains(fn ($token) => $token->status === 'used');
+                            $hasExpiredActiveToken = $tokenHistory->contains(fn ($token) => $token->status === 'active' && $token->expires_at->isPast());
+                            $hasAccount = in_array($applicant->id, $accountApplicantIds, true);
+                        @endphp
+                        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #dde3ee">
+                            <h4 style="margin:0 0 8px">Registration Token</h4>
+                            @forelse ($tokenHistory as $token)
+                                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:8px 0">
+                                    <span>Status: <strong>{{ $token->status }}</strong></span>
+                                    <span>Kedaluwarsa: {{ $token->expires_at->format('d/m/Y H:i') }}</span>
+                                    @if ($token->used_at)
+                                        <span>Digunakan: {{ $token->used_at->format('d/m/Y H:i') }}</span>
+                                    @endif
+                                    @if ($token->status === 'active' && ! $hasAccount)
+                                        <form method="POST" action="{{ route('admin.internship-requests.registration-tokens.revoke', [$internshipRequest, $token]) }}">
+                                            @csrf
+                                            <button type="submit" style="padding:6px 10px;border:1px solid #b91c1c;border-radius:6px;background:#fff;color:#b91c1c;cursor:pointer">Cabut token</button>
+                                        </form>
+                                    @endif
+                                </div>
+                            @empty
+                                <p class="muted" style="margin:0 0 8px">Belum ada token untuk peserta ini.</p>
+                            @endforelse
+
+                            @if (! $hasAccount && ! $hasUsedToken && $latestToken && ($latestToken->status === 'revoked' || $hasExpiredActiveToken))
+                                <form method="POST" action="{{ route('admin.internship-requests.registration-tokens.replace', [$internshipRequest, $applicant]) }}" style="margin-top:8px">
+                                    @csrf
+                                    <button type="submit" style="padding:7px 11px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer">Terbitkan token pengganti</button>
+                                </form>
+                            @endif
+                        </div>
+                    @endif
                 </article>
             @endforeach
         </div>

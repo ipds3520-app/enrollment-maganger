@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\InternshipRequestController as AdminInternshipRequestController;
 use App\Http\Controllers\Admin\ProcessInternshipRequestController;
+use App\Http\Controllers\Admin\RegistrationTokenController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
@@ -77,6 +78,12 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/internship-requests/{internshipRequestId}/decision', ProcessInternshipRequestController::class)
         ->whereNumber('internshipRequestId')
         ->name('admin.internship-requests.decision');
+    Route::post('/admin/internship-requests/{internshipRequestId}/applicants/{applicantId}/registration-token/replace', [RegistrationTokenController::class, 'replace'])
+        ->whereNumber(['internshipRequestId', 'applicantId'])
+        ->name('admin.internship-requests.registration-tokens.replace');
+    Route::post('/admin/internship-requests/{internshipRequestId}/registration-tokens/{registrationTokenId}/revoke', [RegistrationTokenController::class, 'revoke'])
+        ->whereNumber(['internshipRequestId', 'registrationTokenId'])
+        ->name('admin.internship-requests.registration-tokens.revoke');
     Route::get('/admin/internship-requests/{internshipRequestId}/reply-letter', [ReplyLetterDownloadController::class, 'admin'])
         ->whereNumber('internshipRequestId')
         ->name('admin.internship-requests.reply-letter');

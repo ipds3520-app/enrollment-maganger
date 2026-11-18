@@ -4,8 +4,10 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Institution;
 use App\Models\InternshipRequest;
+use App\Models\RegistrationToken;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -21,6 +23,13 @@ class InternshipRequestReviewTest extends TestCase
         parent::setUp();
 
         $this->setUpSqliteTestDatabase();
+        Storage::fake('local');
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     /** @return array{User, Institution} */
@@ -108,6 +117,7 @@ class InternshipRequestReviewTest extends TestCase
 
     public function test_admin_dapat_menyetujui_pengajuan_dengan_pdf(): void
     {
+        Carbon::setTestNow(Carbon::parse('2027-01-01 09:30:00'));
         Storage::fake('local');
         [$operator, $institution] = $this->operator('SMK Approved');
         $request = $this->pendingRequest($operator, $institution);
@@ -119,7 +129,7 @@ class InternshipRequestReviewTest extends TestCase
         );
 
         $request->refresh();
-        $response->assertRedirect(route('admin.internship-requests.show', $request));
+        $response->assertOk()->assertViewIs('admin.registration-tokens.issued');
         $this->assertSame('approved', $request->status);
         $this->assertSame($admin->id, $request->processed_by);
         $this->assertNotNull($request->decided_at);
@@ -127,8 +137,23 @@ class InternshipRequestReviewTest extends TestCase
         $this->assertStringStartsWith('reply-letters/', $request->reply_letter_path);
         $this->assertStringEndsWith('.pdf', $request->reply_letter_path);
         Storage::disk('local')->assertExists($request->reply_letter_path);
-        $this->assertDatabaseCount('registration_tokens', 0);
+        $this->assertDatabaseCount('registration_tokens', 1);
         $this->assertDatabaseCount('users_intern', 0);
+
+        $issuedTokens = $response->viewData('issuedTokens');
+        $plainToken = $issuedTokens[0]['token'];
+        $registrationToken = RegistrationToken::query()->firstOrFail();
+        $this->assertSame(hash('sha256', $plainToken), $registrationToken->token_hash);
+        $this->assertStringNotContainsString($plainToken, $registrationToken->token_hash);
+        $this->assertSame('active', $registrationToken->status);
+        $this->assertNull($registrationToken->used_at);
+        $this->assertTrue($registrationToken->expires_at->equalTo(now()->addDays(30)));
+        $this->assertStringContainsString($plainToken, $response->getContent());
+        $this->assertFalse(session()->has('issuedTokens'));
+
+        $this->get(route('admin.internship-requests.show', $request))
+            ->assertOk()
+            ->assertDontSee($plainToken);
     }
 
     public function test_admin_dapat_menolak_pengajuan_dengan_pdf(): void
@@ -148,6 +173,114 @@ class InternshipRequestReviewTest extends TestCase
         $this->assertSame($admin->id, $request->processed_by);
         $this->assertNotNull($request->decided_at);
         Storage::disk('local')->assertExists($request->reply_letter_path);
+        $this->assertDatabaseCount('registration_tokens', 0);
+    }
+
+    public function test_approval_menerbitkan_satu_token_untuk_setiap_peserta(): void
+    {
+        [$operator, $institution] = $this->operator('SMK Multi Token');
+        $request = $this->pendingRequest($operator, $institution);
+        $request->applicants()->create([
+            'name' => 'Peserta Kedua',
+            'email' => 'peserta.kedua@example.test',
+            'student_number' => 'SISWA-002',
+        ]);
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->post(route('admin.internship-requests.decision', $request), [
+            'decision' => 'approved',
+            'reply_letter' => $this->pdfFile(),
+        ]);
+
+        $response->assertOk()->assertViewIs('admin.registration-tokens.issued');
+        $this->assertDatabaseCount('registration_tokens', 2);
+        $this->assertCount(2, $response->viewData('issuedTokens'));
+
+        foreach ($response->viewData('issuedTokens') as $issued) {
+            $this->assertSame(hash('sha256', $issued['token']), RegistrationToken::query()
+                ->where('applicant_id', $issued['applicant']->id)->value('token_hash'));
+        }
+    }
+
+    public function test_pengajuan_tanpa_peserta_tidak_dapat_disetujui(): void
+    {
+        [$operator, $institution] = $this->operator('SMK Tanpa Peserta');
+        $request = $institution->internshipRequests()->create([
+            'created_by' => $operator->id,
+            'title' => 'Tanpa peserta',
+            'description' => null,
+            'start_date' => '2027-01-10',
+            'end_date' => '2027-03-10',
+        ]);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->from(route('admin.internship-requests.show', $request))
+            ->post(route('admin.internship-requests.decision', $request), [
+                'decision' => 'approved',
+                'reply_letter' => $this->pdfFile(),
+            ])
+            ->assertSessionHasErrors('decision');
+
+        $this->assertSame('pending', $request->fresh()->status);
+        $this->assertDatabaseCount('registration_tokens', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles('reply-letters'));
+    }
+
+    public function test_kegagalan_penerbitan_token_membatalkan_keputusan_dan_membersihkan_surat(): void
+    {
+        [$operator, $institution] = $this->operator('SMK Token Rollback');
+        $request = $this->pendingRequest($operator, $institution);
+        $request->applicants()->create([
+            'name' => 'Peserta Kedua',
+            'email' => 'peserta.kedua@example.test',
+            'student_number' => 'SISWA-002',
+        ]);
+        $admin = User::factory()->admin()->create();
+        $created = 0;
+        Event::listen('eloquent.creating: '.RegistrationToken::class, function () use (&$created): void {
+            $created++;
+            if ($created === 2) {
+                throw new RuntimeException('Simulasi kegagalan penerbitan token.');
+            }
+        });
+
+        $this->withoutExceptionHandling();
+        try {
+            $this->actingAs($admin)->post(route('admin.internship-requests.decision', $request), [
+                'decision' => 'approved',
+                'reply_letter' => $this->pdfFile(),
+            ]);
+            $this->fail('Kegagalan penerbitan token seharusnya membatalkan proses.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Simulasi kegagalan penerbitan token.', $exception->getMessage());
+        }
+
+        $this->assertSame('pending', $request->fresh()->status);
+        $this->assertDatabaseCount('registration_tokens', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles('reply-letters'));
+    }
+
+    public function test_approval_ulang_tidak_menerbitkan_token_ganda(): void
+    {
+        [$operator, $institution] = $this->operator('SMK Approval Ulang');
+        $request = $this->pendingRequest($operator, $institution);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->post(route('admin.internship-requests.decision', $request), [
+            'decision' => 'approved',
+            'reply_letter' => $this->pdfFile(),
+        ])->assertOk();
+        $originalHash = RegistrationToken::query()->value('token_hash');
+
+        $this->actingAs($admin)->from(route('admin.internship-requests.show', $request))
+            ->post(route('admin.internship-requests.decision', $request), [
+                'decision' => 'approved',
+                'reply_letter' => $this->pdfFile('surat-kedua.pdf'),
+            ])
+            ->assertSessionHasErrors('decision');
+
+        $this->assertDatabaseCount('registration_tokens', 1);
+        $this->assertSame($originalHash, RegistrationToken::query()->value('token_hash'));
     }
 
     public function test_keputusan_tanpa_file_ditolak(): void
@@ -263,7 +396,7 @@ class InternshipRequestReviewTest extends TestCase
         $this->actingAs($admin)->post(route('admin.internship-requests.decision', $request), [
             'decision' => 'approved',
             'reply_letter' => $this->pdfFile(),
-        ])->assertRedirect();
+        ])->assertOk();
 
         $originalPath = $request->fresh()->reply_letter_path;
         $this->actingAs($admin)

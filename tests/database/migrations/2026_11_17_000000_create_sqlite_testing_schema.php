@@ -99,16 +99,26 @@ return new class extends Migration
             $table->index('email');
         });
 
-        Schema::create('registration_tokens', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('applicant_id')->unique()->constrained('internship_applicants')->cascadeOnDelete();
-            $table->string('token_hash', 64)->unique();
-            $table->string('status', 20)->default('active');
-            $table->timestamp('expires_at');
-            $table->timestamp('used_at')->nullable();
-            $table->timestamps();
-            $table->index('status');
-        });
+        DB::statement(<<<'SQL'
+            CREATE TABLE registration_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                applicant_id INTEGER NOT NULL,
+                token_hash VARCHAR(64) NOT NULL UNIQUE,
+                status VARCHAR(20) NOT NULL DEFAULT 'active',
+                expires_at DATETIME NOT NULL,
+                used_at DATETIME NULL,
+                created_at DATETIME NULL,
+                updated_at DATETIME NULL,
+                FOREIGN KEY (applicant_id) REFERENCES internship_applicants(id) ON DELETE CASCADE,
+                CHECK (status IN ('active', 'used', 'revoked')),
+                CHECK (
+                    (status = 'used' AND used_at IS NOT NULL)
+                    OR (status IN ('active', 'revoked') AND used_at IS NULL)
+                )
+            )
+        SQL);
+        DB::statement("CREATE UNIQUE INDEX registration_tokens_one_active_per_applicant_unique ON registration_tokens (applicant_id) WHERE status = 'active'");
+        DB::statement('CREATE INDEX registration_tokens_status_index ON registration_tokens (status)');
 
         Schema::create('users_intern', function (Blueprint $table) {
             $table->id();

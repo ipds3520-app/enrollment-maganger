@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\InternshipRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class InternshipRequestController extends Controller
@@ -41,11 +42,16 @@ class InternshipRequestController extends Controller
     public function show(int $internshipRequestId): View
     {
         $internshipRequest = InternshipRequest::query()
-            ->with(['institution', 'creator', 'processor', 'applicants'])
+            ->with(['institution', 'creator', 'processor', 'applicants.registrationTokens'])
             ->findOrFail($internshipRequestId);
+        $accountApplicantIds = DB::table('users_intern')
+            ->whereIn('applicant_id', $internshipRequest->applicants->modelKeys())
+            ->pluck('applicant_id')
+            ->all();
 
         return view('admin.internship-requests.show', [
             'internshipRequest' => $internshipRequest,
+            'accountApplicantIds' => $accountApplicantIds,
         ]);
     }
 }

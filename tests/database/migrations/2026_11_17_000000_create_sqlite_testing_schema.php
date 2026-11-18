@@ -56,6 +56,7 @@ return new class extends Migration
                 description TEXT NULL,
                 start_date DATE NOT NULL,
                 end_date DATE NOT NULL,
+                proposal_path VARCHAR(255) NULL,
                 status VARCHAR(20) NOT NULL DEFAULT 'pending',
                 processed_by INTEGER NULL,
                 decided_at DATETIME NULL,

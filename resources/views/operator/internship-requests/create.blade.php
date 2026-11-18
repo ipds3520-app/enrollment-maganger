@@ -17,7 +17,7 @@
         </section>
     @endif
 
-    <form method="POST" action="{{ route('operator.internship-requests.store') }}">
+    <form method="POST" action="{{ route('operator.internship-requests.store') }}" enctype="multipart/form-data">
         @csrf
         <section class="card" style="margin-bottom:18px">
             <h2>Informasi Permohonan</h2>
@@ -41,6 +41,15 @@
                     </label>
                 </div>
             </div>
+        </section>
+
+        <section class="card" style="margin-bottom:18px">
+            <h2>Proposal Magang</h2>
+            <p class="muted">Unggah satu proposal untuk seluruh peserta dalam pengajuan ini. Format PDF, maksimal 10 MB.</p>
+            <label for="proposal">File proposal PDF
+                <input id="proposal" name="proposal" type="file" accept=".pdf,application/pdf" required style="display:block;width:100%;max-width:520px;padding:9px;margin-top:5px;border:1px solid #cbd5e1;border-radius:8px">
+            </label>
+            @error('proposal') <span style="color:#b91c1c">{{ $message }}</span> @enderror
         </section>
 
         <section class="card" style="margin-bottom:18px">

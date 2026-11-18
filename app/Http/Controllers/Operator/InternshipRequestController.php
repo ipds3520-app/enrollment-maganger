@@ -9,7 +9,12 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
+use RuntimeException;
+use Throwable;
 
 class InternshipRequestController extends Controller
 {
@@ -43,22 +48,50 @@ class InternshipRequestController extends Controller
         $user = $request->user();
         $institution = $user->institution()->firstOrFail();
         $data = $request->validated();
+        $proposal = $request->file('proposal');
+        $newProposalPath = null;
+        $disk = Storage::disk('local');
 
-        $internshipRequest = DB::transaction(function () use ($data, $institution, $user): InternshipRequest {
-            $internshipRequest = $institution->internshipRequests()->create([
-                'created_by' => $user->getKey(),
-                'title' => $data['title'],
-                'description' => $data['description'] ?? null,
-                'start_date' => $data['start_date'],
-                'end_date' => $data['end_date'],
-            ]);
+        try {
+            $internshipRequest = DB::transaction(function () use ($data, $institution, $user, $proposal, $disk, &$newProposalPath): InternshipRequest {
+                $internshipRequest = $institution->internshipRequests()->create([
+                    'created_by' => $user->getKey(),
+                    'title' => $data['title'],
+                    'description' => $data['description'] ?? null,
+                    'start_date' => $data['start_date'],
+                    'end_date' => $data['end_date'],
+                ]);
 
-            foreach ($data['applicants'] as $applicant) {
-                $internshipRequest->applicants()->create($applicant);
+                $directory = 'proposals/'.$internshipRequest->getKey();
+                do {
+                    $newProposalPath = $directory.'/'.Str::uuid().'.pdf';
+                } while ($disk->exists($newProposalPath));
+
+                $storedPath = $proposal->storeAs($directory, basename($newProposalPath), 'local');
+
+                if ($storedPath !== $newProposalPath || ! $disk->exists($newProposalPath)) {
+                    throw new RuntimeException('File proposal gagal disimpan pada disk privat.');
+                }
+
+                // Assign explicitly: proposal_path is controlled by the server and not mass-assigned.
+                $internshipRequest->proposal_path = $newProposalPath;
+                $internshipRequest->save();
+
+                foreach ($data['applicants'] as $applicant) {
+                    $internshipRequest->applicants()->create($applicant);
+                }
+
+                return $internshipRequest;
+            });
+        } catch (Throwable $exception) {
+            if ($newProposalPath !== null && $disk->exists($newProposalPath) && ! $disk->delete($newProposalPath)) {
+                Log::warning('Gagal membersihkan file proposal setelah transaksi dibatalkan.', [
+                    'path' => $newProposalPath,
+                ]);
             }
 
-            return $internshipRequest;
-        });
+            throw $exception;
+        }
 
         return redirect()
             ->route('operator.internship-requests.show', $internshipRequest)

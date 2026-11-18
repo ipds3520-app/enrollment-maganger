@@ -66,6 +66,15 @@
         </div>
     </section>
 
+    <section class="card" style="margin-bottom:18px">
+        <h2>Proposal Magang</h2>
+        @if ($internshipRequest->proposal_path)
+            <p style="margin:0"><a href="{{ route('admin.internship-requests.proposal', $internshipRequest) }}">Unduh proposal PDF</a></p>
+        @else
+            <p class="muted" style="margin:0">Proposal belum tersedia untuk pengajuan ini.</p>
+        @endif
+    </section>
+
     @if ($internshipRequest->status === 'pending')
         <section class="card" style="margin-bottom:18px">
             <h2>Keputusan Admin</h2>

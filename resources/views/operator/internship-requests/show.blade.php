@@ -35,6 +35,15 @@
         </dl>
     </section>
 
+    <section class="card" style="margin-bottom:18px">
+        <h2>Proposal Magang</h2>
+        @if ($internshipRequest->proposal_path)
+            <p style="margin:0"><a href="{{ route('operator.internship-requests.proposal', $internshipRequest) }}">Unduh proposal PDF</a></p>
+        @else
+            <p class="muted" style="margin:0">Proposal belum tersedia untuk pengajuan ini.</p>
+        @endif
+    </section>
+
     <section class="card">
         <h2>Calon Peserta ({{ $internshipRequest->applicants->count() }})</h2>
         <div style="display:grid;gap:12px">

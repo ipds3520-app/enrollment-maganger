@@ -6,8 +6,10 @@ use App\Models\Institution;
 use App\Models\InternshipApplicant;
 use App\Models\InternshipRequest;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Tests\Support\UsesSqliteTestDatabase;
 use Tests\TestCase;
@@ -21,6 +23,7 @@ class InternshipRequestTest extends TestCase
         parent::setUp();
 
         $this->setUpSqliteTestDatabase();
+        Storage::fake('local');
     }
 
     /** @return array{User, Institution} */
@@ -41,6 +44,7 @@ class InternshipRequestTest extends TestCase
             'start_date' => '2027-01-10',
             'end_date' => '2027-03-10',
             'applicants' => [$this->applicant()],
+            'proposal' => UploadedFile::fake()->create('proposal.pdf', 1, 'application/pdf'),
         ], $overrides);
     }
 
@@ -86,6 +90,8 @@ class InternshipRequestTest extends TestCase
         $this->assertNull($request->decided_at);
         $this->assertCount(1, $request->applicants);
         $this->assertSame('calon@example.test', $request->applicants->first()->email);
+        $this->assertMatchesRegularExpression('/^proposals\/'.$request->id.'\/[0-9a-f-]{36}\.pdf$/', $request->proposal_path);
+        Storage::disk('local')->assertExists($request->proposal_path);
     }
 
     public function test_operator_dapat_membuat_pengajuan_dengan_beberapa_calon(): void
@@ -122,6 +128,7 @@ class InternshipRequestTest extends TestCase
             'processed_by' => $admin->id,
             'decided_at' => '2026-01-01 10:00:00',
             'reply_letter_path' => 'surat.pdf',
+            'proposal_path' => 'proposals/1/fake.pdf',
             'letter_number' => '123/ADM',
             'admin_notes' => 'Disetujui',
         ]);
@@ -138,11 +145,57 @@ class InternshipRequestTest extends TestCase
             'processed_by',
             'decided_at',
             'reply_letter_path',
+            'proposal_path',
             'letter_number',
             'admin_notes',
         ]);
         $this->assertDatabaseCount('internship_requests', 0);
         $this->assertDatabaseCount('internship_applicants', 0);
+    }
+
+    public function test_proposal_wajib_diunggah_dan_validasi_menolak_format_dan_mime_yang_salah(): void
+    {
+        [$operator] = $this->operator();
+
+        $this->actingAs($operator)->from('/operator/internship-requests/create')
+            ->post(route('operator.internship-requests.store'), $this->payload(['proposal' => null]))
+            ->assertSessionHasErrors('proposal');
+
+        $this->actingAs($operator)->from('/operator/internship-requests/create')
+            ->post(route('operator.internship-requests.store'), $this->payload([
+                'proposal' => UploadedFile::fake()->create('proposal.txt', 1, 'text/plain'),
+            ]))->assertSessionHasErrors('proposal');
+
+        $this->actingAs($operator)->from('/operator/internship-requests/create')
+            ->post(route('operator.internship-requests.store'), $this->payload([
+                'proposal' => UploadedFile::fake()->create('proposal.pdf', 1, 'text/plain'),
+            ]))->assertSessionHasErrors('proposal');
+
+        $this->assertDatabaseCount('internship_requests', 0);
+    }
+
+    public function test_proposal_di_atas_10_mb_ditolak(): void
+    {
+        [$operator] = $this->operator();
+
+        $this->actingAs($operator)->from('/operator/internship-requests/create')
+            ->post(route('operator.internship-requests.store'), $this->payload([
+                'proposal' => UploadedFile::fake()->create('proposal.pdf', 10241, 'application/pdf'),
+            ]))->assertSessionHasErrors('proposal');
+
+        $this->assertDatabaseCount('internship_requests', 0);
+    }
+
+    public function test_pengajuan_lama_tanpa_proposal_tetap_dapat_dibuka(): void
+    {
+        [$operator, $institution] = $this->operator();
+        $request = $this->existingRequest($operator, $institution, 'Pengajuan Lama');
+
+        $this->actingAs($operator)
+            ->get(route('operator.internship-requests.show', $request))
+            ->assertOk()
+            ->assertSee('Proposal belum tersedia untuk pengajuan ini.')
+            ->assertDontSee(route('operator.internship-requests.proposal', $request));
     }
 
     public function test_pengajuan_tanpa_calon_ditolak(): void
@@ -221,6 +274,7 @@ class InternshipRequestTest extends TestCase
         $this->assertTrue($failedAsExpected, 'Insert calon seharusnya gagal di dalam transaksi.');
         $this->assertDatabaseCount('internship_requests', 0);
         $this->assertDatabaseCount('internship_applicants', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles('proposals'));
     }
 
     public function test_operator_hanya_melihat_pengajuan_institusinya(): void

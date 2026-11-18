@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Operator\DashboardController as OperatorDashboardController;
 use App\Http\Controllers\Operator\InternshipRequestController;
+use App\Http\Controllers\ProposalDownloadController;
 use App\Http\Controllers\ReplyLetterDownloadController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -79,6 +80,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/internship-requests/{internshipRequestId}/reply-letter', [ReplyLetterDownloadController::class, 'admin'])
         ->whereNumber('internshipRequestId')
         ->name('admin.internship-requests.reply-letter');
+    Route::get('/admin/internship-requests/{internshipRequestId}/proposal', [ProposalDownloadController::class, 'admin'])
+        ->whereNumber('internshipRequestId')
+        ->name('admin.internship-requests.proposal');
 });
 
 Route::middleware(['auth', 'role:operator'])->group(function () {
@@ -94,6 +98,9 @@ Route::middleware(['auth', 'role:operator'])->group(function () {
     Route::get('/operator/internship-requests/{internshipRequestId}/reply-letter', [ReplyLetterDownloadController::class, 'operator'])
         ->whereNumber('internshipRequestId')
         ->name('operator.internship-requests.reply-letter');
+    Route::get('/operator/internship-requests/{internshipRequestId}/proposal', [ProposalDownloadController::class, 'operator'])
+        ->whereNumber('internshipRequestId')
+        ->name('operator.internship-requests.proposal');
 
     Route::get('/operator/dashboard', OperatorDashboardController::class)->name('operator.dashboard');
 });

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -13,6 +14,36 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['institution_id', 'created_by', 'title', 'description', 'start_date', 'end_date'])]
 class InternshipRequest extends Model
 {
+    /**
+     * Institusi pengaju.
+     *
+     * @return BelongsTo<Institution, $this>
+     */
+    public function institution(): BelongsTo
+    {
+        return $this->belongsTo(Institution::class);
+    }
+
+    /**
+     * Operator yang membuat pengajuan.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Admin yang memproses keputusan.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function processor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'processed_by');
+    }
+
     /**
      * Calon peserta yang diajukan dalam permohonan ini.
      *

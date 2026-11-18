@@ -52,5 +52,11 @@
         </div>
     </section>
 
+    @if (in_array($internshipRequest->status, ['approved', 'rejected'], true) && $internshipRequest->reply_letter_path)
+        <p style="margin-top:18px">
+            <a href="{{ route('operator.internship-requests.reply-letter', $internshipRequest) }}">Unduh surat balasan PDF</a>
+        </p>
+    @endif
+
     <p style="margin-top:18px"><a href="{{ route('operator.internship-requests.index') }}">Kembali ke daftar pengajuan</a></p>
 @endsection

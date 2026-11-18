@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\InternshipRequestController as AdminInternshipRequestController;
+use App\Http\Controllers\Admin\ProcessInternshipRequestController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Operator\DashboardController as OperatorDashboardController;
 use App\Http\Controllers\Operator\InternshipRequestController;
+use App\Http\Controllers\ReplyLetterDownloadController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -65,6 +68,17 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/dashboard', AdminDashboardController::class)->name('admin.dashboard');
+    Route::get('/admin/internship-requests', [AdminInternshipRequestController::class, 'index'])
+        ->name('admin.internship-requests.index');
+    Route::get('/admin/internship-requests/{internshipRequestId}', [AdminInternshipRequestController::class, 'show'])
+        ->whereNumber('internshipRequestId')
+        ->name('admin.internship-requests.show');
+    Route::post('/admin/internship-requests/{internshipRequestId}/decision', ProcessInternshipRequestController::class)
+        ->whereNumber('internshipRequestId')
+        ->name('admin.internship-requests.decision');
+    Route::get('/admin/internship-requests/{internshipRequestId}/reply-letter', [ReplyLetterDownloadController::class, 'admin'])
+        ->whereNumber('internshipRequestId')
+        ->name('admin.internship-requests.reply-letter');
 });
 
 Route::middleware(['auth', 'role:operator'])->group(function () {
@@ -77,6 +91,9 @@ Route::middleware(['auth', 'role:operator'])->group(function () {
     Route::get('/operator/internship-requests/{internshipRequestId}', [InternshipRequestController::class, 'show'])
         ->whereNumber('internshipRequestId')
         ->name('operator.internship-requests.show');
+    Route::get('/operator/internship-requests/{internshipRequestId}/reply-letter', [ReplyLetterDownloadController::class, 'operator'])
+        ->whereNumber('internshipRequestId')
+        ->name('operator.internship-requests.reply-letter');
 
     Route::get('/operator/dashboard', OperatorDashboardController::class)->name('operator.dashboard');
 });

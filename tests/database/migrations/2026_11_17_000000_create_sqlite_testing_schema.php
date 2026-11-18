@@ -98,6 +98,30 @@ return new class extends Migration
             $table->index('email');
         });
 
+        Schema::create('registration_tokens', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('applicant_id')->unique()->constrained('internship_applicants')->cascadeOnDelete();
+            $table->string('token_hash', 64)->unique();
+            $table->string('status', 20)->default('active');
+            $table->timestamp('expires_at');
+            $table->timestamp('used_at')->nullable();
+            $table->timestamps();
+            $table->index('status');
+        });
+
+        Schema::create('users_intern', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('applicant_id')->unique()->constrained('internship_applicants')->cascadeOnDelete();
+            $table->foreignId('registration_token_id')->unique()->constrained('registration_tokens')->cascadeOnDelete();
+            $table->string('name', 100);
+            $table->string('email', 150)->unique();
+            $table->string('password', 255);
+            $table->string('phone', 20)->nullable();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->rememberToken();
+            $table->timestamps();
+        });
+
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
@@ -107,6 +131,8 @@ return new class extends Migration
 
     public function down(): void
     {
+        Schema::dropIfExists('users_intern');
+        Schema::dropIfExists('registration_tokens');
         Schema::dropIfExists('internship_applicants');
         Schema::dropIfExists('internship_requests');
         Schema::dropIfExists('users');

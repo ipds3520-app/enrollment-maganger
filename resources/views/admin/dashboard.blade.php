@@ -4,7 +4,8 @@
 
 @section('content')
     <h1>Dashboard Admin</h1>
-    <p class="subtitle">Halaman sementara. Fitur pengelolaan akan ditambahkan pada tahap berikutnya.</p>
+    <p class="subtitle">Kelola akun admin dan tinjau permohonan magang.</p>
+    <p style="margin:0 0 20px"><a href="{{ route('admin.internship-requests.index') }}">Tinjau pengajuan magang</a></p>
 
     <div class="grid">
         <section class="card">

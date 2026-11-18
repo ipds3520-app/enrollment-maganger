@@ -28,13 +28,18 @@ class AppServiceProvider extends ServiceProvider
         // kombinasi email (lowercase) dan alamat IP.
         RateLimiter::for('login', function (Request $request) {
             $email = $request->input('email');
-            $key = (is_string($email) ? mb_strtolower(trim($email)) : '').'|'.$request->ip();
+            $loginType = match (true) {
+                $request->routeIs('admin.login.store') => 'admin',
+                $request->routeIs('operator.login.store') => 'operator',
+                default => 'intern',
+            };
+            $key = $loginType.'|'.(is_string($email) ? mb_strtolower(trim($email)) : '').'|'.$request->ip();
 
             return Limit::perMinute(6)
                 ->by($key)
                 ->response(function (Request $request, array $headers) {
                     return redirect()
-                        ->route('login')
+                        ->route($request->routeIs('admin.login.store') ? 'admin.login' : ($request->routeIs('operator.login.store') ? 'operator.login' : 'intern.login'))
                         ->withInput($request->only('email', 'remember'))
                         ->withErrors([
                             'email' => 'Terlalu banyak percobaan login. Silakan coba lagi dalam 1 menit.',
@@ -43,8 +48,19 @@ class AppServiceProvider extends ServiceProvider
                 });
         });
 
-        // Isi email reset password dalam Bahasa Indonesia. URL tetap mengarah
-        // ke route standar `password.reset` dengan token dari broker Laravel.
+        RateLimiter::for('intern-password-reset', function (Request $request) {
+            $email = $request->input('email');
+            $emailKey = is_string($email) ? hash('sha256', mb_strtolower(trim($email))) : 'invalid';
+
+            $ip = $request->ip();
+
+            return [
+                Limit::perMinute(20)->by('intern-reset-ip:'.$ip),
+                Limit::perMinute(5)->by('intern-reset-email:'.$ip.'|'.$emailKey),
+            ];
+        });
+
+        // Email reset tetap digunakan untuk Admin/Operator melalui broker users.
         ResetPassword::toMailUsing(function ($notifiable, string $token) {
             $url = route('password.reset', [
                 'token' => $token,

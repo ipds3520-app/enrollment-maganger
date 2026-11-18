@@ -248,23 +248,24 @@ class PasswordResetTest extends TestCase
         $this->post('/forgot-password', $payload)->assertStatus(429);
     }
 
-    public function test_pengguna_yang_sudah_login_tidak_dapat_membuka_halaman_lupa_password(): void
+    public function test_pengguna_yang_sudah_login_dapat_membuka_halaman_lupa_password_tanpa_mengubah_guard(): void
     {
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)
             ->get('/forgot-password')
-            ->assertRedirect('/');
+            ->assertOk();
+        $this->assertAuthenticatedAs($admin, 'admin');
     }
 
-    public function test_pengguna_yang_sudah_login_tidak_dapat_membuka_halaman_reset_password(): void
+    public function test_pengguna_yang_sudah_login_dapat_membuka_halaman_reset_password(): void
     {
         $admin = User::factory()->admin()->create();
         $token = $this->tokenFor($admin);
 
         $this->actingAs($admin)
             ->get(route('password.reset', ['token' => $token, 'email' => $admin->email]))
-            ->assertRedirect('/');
+            ->assertOk();
     }
 
     public function test_isi_email_reset_menggunakan_bahasa_indonesia(): void

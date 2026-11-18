@@ -51,7 +51,7 @@ class LoginRequest extends FormRequest
      *
      * @throws ValidationException
      */
-    public function authenticate(): void
+    public function authenticate(string $guard, ?string $role = null): void
     {
         $email = $this->input('email');
         $password = $this->input('password');
@@ -61,7 +61,11 @@ class LoginRequest extends FormRequest
             'password' => is_string($password) ? $password : '',
         ];
 
-        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
+        if ($role !== null) {
+            $credentials['role'] = $role;
+        }
+
+        if (! Auth::guard($guard)->attempt($credentials, $this->boolean('remember'))) {
             throw ValidationException::withMessages([
                 'email' => 'Email atau password salah.',
             ]);

@@ -133,7 +133,40 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        DB::statement(<<<'SQL'
+            CREATE TABLE intern_password_reset_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_intern_id INTEGER NOT NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                processed_by INTEGER NULL,
+                processed_at DATETIME NULL,
+                token_hash VARCHAR(64) NULL UNIQUE,
+                token_expires_at DATETIME NULL,
+                token_used_at DATETIME NULL,
+                token_revoked_at DATETIME NULL,
+                created_at DATETIME NULL,
+                updated_at DATETIME NULL,
+                FOREIGN KEY (user_intern_id) REFERENCES users_intern(id) ON DELETE RESTRICT,
+                FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE RESTRICT,
+                CHECK (status IN ('pending', 'approved', 'rejected')),
+                CHECK (
+                    (status = 'pending' AND processed_by IS NULL AND processed_at IS NULL AND token_hash IS NULL AND token_expires_at IS NULL AND token_used_at IS NULL AND token_revoked_at IS NULL)
+                    OR
+                    (status = 'rejected' AND processed_by IS NOT NULL AND processed_at IS NOT NULL AND token_hash IS NULL AND token_expires_at IS NULL AND token_used_at IS NULL AND token_revoked_at IS NULL)
+                    OR
+                    (status = 'approved' AND processed_by IS NOT NULL AND processed_at IS NOT NULL AND token_hash IS NOT NULL AND token_expires_at IS NOT NULL AND (token_used_at IS NULL OR token_revoked_at IS NULL))
+                )
+            )
+        SQL);
+        DB::statement('CREATE UNIQUE INDEX intern_password_reset_requests_one_pending_per_intern_unique ON intern_password_reset_requests (user_intern_id) WHERE status = \'pending\'');
+
         Schema::create('password_reset_tokens', function (Blueprint $table) {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
+
+        Schema::create('password_reset_tokens_intern', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
@@ -142,12 +175,14 @@ return new class extends Migration
 
     public function down(): void
     {
+        Schema::dropIfExists('intern_password_reset_requests');
         Schema::dropIfExists('users_intern');
         Schema::dropIfExists('registration_tokens');
         Schema::dropIfExists('internship_applicants');
         Schema::dropIfExists('internship_requests');
         Schema::dropIfExists('users');
         Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('password_reset_tokens_intern');
         Schema::dropIfExists('institutions');
     }
 };

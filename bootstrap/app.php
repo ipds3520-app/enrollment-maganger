@@ -5,7 +5,6 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,15 +17,21 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureRole::class,
         ]);
 
-        // Tamu diarahkan ke halaman login. Route `login` baru dibuat pada
-        // sub-tahap 3B-2, sehingga selama belum tersedia digunakan halaman root
-        // agar tidak terjadi error "route not defined".
         $middleware->redirectGuestsTo(
-            fn (Request $request) => Route::has('login') ? route('login') : '/'
+            fn (Request $request) => match (true) {
+                $request->is('admin/*') => route('admin.login'),
+                $request->is('operator/*') => route('operator.login'),
+                $request->is('intern/*') => route('intern.login'),
+                default => route('login'),
+            }
         );
 
-        // Pengguna yang sudah login dan membuka halaman guest diarahkan ke root.
-        $middleware->redirectUsersTo('/');
+        $middleware->redirectUsersTo(fn (Request $request) => match (true) {
+            $request->is('admin/*') => route('admin.dashboard'),
+            $request->is('operator/*') || $request->is('register') => route('operator.dashboard'),
+            $request->is('intern/*') => route('intern.dashboard'),
+            default => route('login'),
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -1,74 +1,92 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\InternPasswordResetRequestController;
 use App\Http\Controllers\Admin\InternshipRequestController as AdminInternshipRequestController;
 use App\Http\Controllers\Admin\ProcessInternshipRequestController;
 use App\Http\Controllers\Admin\RegistrationTokenController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\InternNewPasswordController;
+use App\Http\Controllers\Auth\InternPasswordResetLinkController;
+use App\Http\Controllers\Auth\InternRegistrationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Intern\DashboardController;
 use App\Http\Controllers\Operator\DashboardController as OperatorDashboardController;
 use App\Http\Controllers\Operator\InternshipRequestController;
 use App\Http\Controllers\ProposalDownloadController;
 use App\Http\Controllers\ReplyLetterDownloadController;
-use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    if (! Auth::check()) {
+    $admin = Auth::guard('admin')->user();
+    $operator = Auth::guard('operator')->user();
+    $intern = Auth::guard('intern')->user();
+
+    if ($admin !== null && $admin->isAdmin() === false) {
+        abort(403);
+    }
+
+    if ($operator !== null && $operator->isOperator() === false) {
+        abort(403);
+    }
+
+    $signedIn = collect([
+        $admin !== null ? 'admin.dashboard' : null,
+        $operator !== null ? 'operator.dashboard' : null,
+        $intern !== null ? 'intern.dashboard' : null,
+    ])->filter();
+
+    if ($signedIn->count() === 1) {
+        return redirect()->route($signedIn->first());
+    }
+
+    if ($signedIn->isNotEmpty()) {
         return redirect()->route('login');
     }
 
-    /** @var User $user */
-    $user = Auth::user();
-
-    if ($user->isAdmin()) {
-        return redirect()->route('admin.dashboard');
-    }
-
-    if ($user->isOperator()) {
-        return redirect()->route('operator.dashboard');
-    }
-
-    // Role hanya boleh admin atau operator.
-    abort(403, 'Role pengguna tidak dikenali.');
+    return redirect()->route('login');
 })->name('home');
 
-Route::middleware('guest')->group(function () {
+Route::middleware('guest:operator')->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
 
     Route::post('/register', [RegisteredUserController::class, 'store'])
         ->middleware('throttle:6,1')
         ->name('register.store');
 
-    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
-
-    Route::post('/login', [AuthenticatedSessionController::class, 'store'])
-        ->middleware('throttle:login')
-        ->name('login.store');
-
-    Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])
-        ->name('password.request');
-
-    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
-        ->middleware('throttle:6,1')
-        ->name('password.email');
-
-    Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])
-        ->name('password.reset');
-
-    Route::post('/reset-password', [NewPasswordController::class, 'store'])
-        ->middleware('throttle:6,1')
-        ->name('password.update');
 });
 
-Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
-    ->middleware('auth')
-    ->name('logout');
+Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+Route::get('/admin/login', [AuthenticatedSessionController::class, 'createAdmin'])->middleware('guest:admin')->name('admin.login');
+Route::post('/admin/login', [AuthenticatedSessionController::class, 'storeAdmin'])->middleware(['guest:admin', 'throttle:login'])->name('admin.login.store');
+Route::get('/operator/login', [AuthenticatedSessionController::class, 'createOperator'])->middleware('guest:operator')->name('operator.login');
+Route::post('/operator/login', [AuthenticatedSessionController::class, 'storeOperator'])->middleware(['guest:operator', 'throttle:login'])->name('operator.login.store');
+Route::get('/intern/login', [AuthenticatedSessionController::class, 'createIntern'])->middleware('guest:intern')->name('intern.login');
+Route::post('/intern/login', [AuthenticatedSessionController::class, 'storeIntern'])->middleware(['guest:intern', 'throttle:login'])->name('intern.login.store');
 
-Route::middleware(['auth', 'role:admin'])->group(function () {
+Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->middleware('throttle:6,1')->name('password.email');
+Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+Route::post('/reset-password', [NewPasswordController::class, 'store'])->middleware('throttle:6,1')->name('password.update');
+Route::get('/intern/forgot-password', [InternPasswordResetLinkController::class, 'create'])->name('intern.password.request');
+Route::post('/intern/forgot-password', [InternPasswordResetLinkController::class, 'store'])->middleware('throttle:intern-password-reset')->name('intern.password.email');
+Route::get('/intern/reset-password', [InternNewPasswordController::class, 'create'])->name('intern.password.reset');
+Route::post('/intern/reset-password', [InternNewPasswordController::class, 'store'])->middleware('throttle:6,1')->name('intern.password.update');
+
+Route::post('/admin/logout', [AuthenticatedSessionController::class, 'destroyAdmin'])->middleware('auth:admin')->name('admin.logout');
+Route::post('/operator/logout', [AuthenticatedSessionController::class, 'destroyOperator'])->middleware('auth:operator')->name('operator.logout');
+Route::post('/intern/logout', [AuthenticatedSessionController::class, 'destroyIntern'])->middleware('auth:intern')->name('intern.logout');
+
+Route::get('/intern/register', [InternRegistrationController::class, 'create'])
+    ->name('intern.register');
+Route::post('/intern/register', [InternRegistrationController::class, 'store'])
+    ->middleware('throttle:6,1')
+    ->name('intern.register.store');
+
+Route::middleware(['auth:admin,operator,intern', 'role:admin,admin'])->group(function () {
     Route::get('/admin/dashboard', AdminDashboardController::class)->name('admin.dashboard');
     Route::get('/admin/internship-requests', [AdminInternshipRequestController::class, 'index'])
         ->name('admin.internship-requests.index');
@@ -92,7 +110,14 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         ->name('admin.internship-requests.proposal');
 });
 
-Route::middleware(['auth', 'role:operator'])->group(function () {
+Route::middleware(['auth:admin', 'role:admin,admin'])->prefix('/admin/intern-password-reset-requests')->name('admin.intern-password-reset-requests.')->group(function () {
+    Route::get('/', [InternPasswordResetRequestController::class, 'index'])->name('index');
+    Route::get('/{requestId}', [InternPasswordResetRequestController::class, 'show'])->whereNumber('requestId')->name('show');
+    Route::post('/{requestId}/approve', [InternPasswordResetRequestController::class, 'approve'])->whereNumber('requestId')->name('approve');
+    Route::post('/{requestId}/reject', [InternPasswordResetRequestController::class, 'reject'])->whereNumber('requestId')->name('reject');
+});
+
+Route::middleware(['auth:operator,admin,intern', 'role:operator,operator'])->group(function () {
     Route::get('/operator/internship-requests', [InternshipRequestController::class, 'index'])
         ->name('operator.internship-requests.index');
     Route::get('/operator/internship-requests/create', [InternshipRequestController::class, 'create'])
@@ -110,4 +135,9 @@ Route::middleware(['auth', 'role:operator'])->group(function () {
         ->name('operator.internship-requests.proposal');
 
     Route::get('/operator/dashboard', OperatorDashboardController::class)->name('operator.dashboard');
+});
+
+Route::middleware('auth:intern')->group(function () {
+    Route::get('/intern/dashboard', [DashboardController::class, '__invoke'])
+        ->name('intern.dashboard');
 });

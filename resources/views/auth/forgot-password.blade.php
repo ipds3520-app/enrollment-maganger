@@ -42,4 +42,7 @@
     <p class="auth-links">
         <a href="{{ route('login') }}">Kembali ke halaman masuk</a>
     </p>
+    <p class="auth-links">
+        Reset akun peserta? <a href="{{ route('intern.password.request') }}">Buka reset password peserta</a>
+    </p>
 @endsection

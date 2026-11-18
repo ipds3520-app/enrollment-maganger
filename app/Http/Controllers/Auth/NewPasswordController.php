@@ -34,7 +34,7 @@ class NewPasswordController extends Controller
      */
     public function store(NewPasswordRequest $request): RedirectResponse
     {
-        $status = Password::reset(
+        $status = Password::broker('users')->reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user, string $password): void {
                 // Cast 'hashed' pada model User meng-hash password otomatis.

@@ -118,24 +118,21 @@
 <body>
     <header class="topbar">
         <div class="brand">{{ config('app.name', 'Enrollment Magang') }}</div>
-        @auth
+        @php
+            $currentUser = request()->user();
+            $dashboardArea = request()->routeIs('admin.*') ? 'admin' : (request()->routeIs('operator.*') ? 'operator' : 'intern');
+            $logoutRoute = $dashboardArea.'.logout';
+        @endphp
+        @if ($currentUser)
             <div class="user-info">
-                <span>{{ auth()->user()->name }}</span>
-                <span class="badge">
-                    @if (auth()->user()->isAdmin())
-                        Admin
-                    @elseif (auth()->user()->isOperator())
-                        Operator
-                    @else
-                        Tanpa Role
-                    @endif
-                </span>
-                <form class="logout-form" method="POST" action="{{ route('logout') }}">
+                <span>{{ $currentUser->name }}</span>
+                <span class="badge">{{ ucfirst($dashboardArea) }}</span>
+                <form class="logout-form" method="POST" action="{{ route($logoutRoute) }}">
                     @csrf
                     <button type="submit" class="logout-button">Keluar</button>
                 </form>
             </div>
-        @endauth
+        @endif
     </header>
 
     <main class="container">

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['internship_request_id', 'name', 'email', 'phone', 'student_number', 'school_major'])]
 class InternshipApplicant extends Model
@@ -28,5 +29,15 @@ class InternshipApplicant extends Model
     public function registrationTokens(): HasMany
     {
         return $this->hasMany(RegistrationToken::class, 'applicant_id');
+    }
+
+    /**
+     * Akun peserta, jika registration token telah digunakan.
+     *
+     * @return HasOne<UserIntern, $this>
+     */
+    public function internAccount(): HasOne
+    {
+        return $this->hasOne(UserIntern::class, 'applicant_id');
     }
 }

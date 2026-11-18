@@ -29,7 +29,7 @@ class PasswordResetLinkController extends Controller
         /** @var array{email: string} $credentials */
         $credentials = $request->only('email');
 
-        Password::sendResetLink($credentials);
+        Password::broker('users')->sendResetLink($credentials);
 
         return back()->with(
             'status',

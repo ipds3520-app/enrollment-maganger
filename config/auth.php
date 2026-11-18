@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Models\UserIntern;
 
 return [
 
@@ -42,6 +43,18 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        'admin' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+        'operator' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+        'intern' => [
+            'driver' => 'session',
+            'provider' => 'interns',
+        ],
     ],
 
     /*
@@ -65,6 +78,10 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+        'interns' => [
+            'driver' => 'eloquent',
+            'model' => UserIntern::class,
         ],
 
         // 'users' => [

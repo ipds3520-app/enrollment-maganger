@@ -67,8 +67,9 @@ class RoleAccessTest extends TestCase
 
     public function test_pengguna_belum_login_tidak_dapat_membuka_dashboard(): void
     {
-        $this->get('/admin/dashboard')->assertRedirect(route('login'));
-        $this->get('/operator/dashboard')->assertRedirect(route('login'));
+        $this->get('/admin/dashboard')->assertRedirect(route('admin.login'));
+        $this->get('/operator/dashboard')->assertRedirect(route('operator.login'));
+        $this->get('/intern/dashboard')->assertRedirect(route('intern.login'));
     }
 
     public function test_role_tidak_valid_ditolak(): void
@@ -76,9 +77,9 @@ class RoleAccessTest extends TestCase
         $user = User::factory()->admin()->create();
         $user->forceFill(['role' => 'invalid'])->save();
 
-        $this->actingAs($user)->get('/admin/dashboard')->assertForbidden();
-        $this->actingAs($user)->get('/operator/dashboard')->assertForbidden();
-        $this->actingAs($user)->get('/')->assertForbidden();
+        $this->actingAs($user, 'admin')->get('/admin/dashboard')->assertForbidden();
+        $this->actingAs($user, 'admin')->get('/operator/dashboard')->assertForbidden();
+        $this->actingAs($user, 'admin')->get('/')->assertForbidden();
     }
 
     public function test_root_mengarahkan_admin_ke_dashboard_admin(): void
@@ -102,6 +103,16 @@ class RoleAccessTest extends TestCase
     public function test_root_mengarahkan_tamu_ke_halaman_login(): void
     {
         $this->get('/')->assertRedirect(route('login'));
+    }
+
+    public function test_root_mengarahkan_ke_pemilih_jika_beberapa_guard_aktif(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $operator = User::factory()->operator()->create();
+
+        $this->actingAs($admin, 'admin')->actingAs($operator, 'operator')
+            ->get('/')
+            ->assertRedirect(route('login'));
     }
 
     public function test_role_tidak_dapat_diubah_melalui_mass_assignment(): void

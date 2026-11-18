@@ -6,6 +6,7 @@
     <h1>Dashboard Admin</h1>
     <p class="subtitle">Kelola akun admin dan tinjau permohonan magang.</p>
     <p style="margin:0 0 20px"><a href="{{ route('admin.internship-requests.index') }}">Tinjau pengajuan magang</a></p>
+    <p style="margin:0 0 20px"><a href="{{ route('admin.intern-password-reset-requests.index') }}">Permintaan reset password Intern</a></p>
 
     <div class="grid">
         <section class="card">

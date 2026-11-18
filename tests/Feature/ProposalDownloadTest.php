@@ -79,8 +79,8 @@ class ProposalDownloadTest extends TestCase
         [$operator, $institution] = $this->operator('Institusi A');
         $request = $this->requestWithProposal($operator, $institution);
 
-        $this->get(route('admin.internship-requests.proposal', $request))->assertRedirect(route('login'));
-        $this->get(route('operator.internship-requests.proposal', $request))->assertRedirect(route('login'));
+        $this->get(route('admin.internship-requests.proposal', $request))->assertRedirect(route('admin.login'));
+        $this->get(route('operator.internship-requests.proposal', $request))->assertRedirect(route('operator.login'));
     }
 
     public function test_pengajuan_lama_tanpa_proposal_tidak_dapat_diunduh(): void

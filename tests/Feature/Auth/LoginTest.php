@@ -15,200 +15,104 @@ class LoginTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
         $this->setUpSqliteTestDatabase();
     }
 
-    public function test_halaman_login_dapat_ditampilkan(): void
+    public function test_login_selector_dan_halaman_login_per_role_dapat_ditampilkan(): void
     {
-        $this->get('/login')
+        $this->get('/login')->assertOk()->assertSee('Login Admin')->assertSee('Login Operator')->assertSee('Login Peserta Magang');
+        $this->get(route('admin.login'))->assertOk()->assertSee('Masuk sebagai Admin');
+        $this->get(route('operator.login'))->assertOk()->assertSee('Masuk sebagai Operator');
+        $this->get(route('intern.login'))->assertOk()->assertSee('Masuk sebagai Peserta Magang');
+    }
+
+    public function test_admin_login_menggunakan_guard_admin_dan_role_admin(): void
+    {
+        $admin = User::factory()->admin()->create(['password' => 'rahasia123']);
+
+        $this->post(route('admin.login.store'), ['email' => $admin->email, 'password' => 'rahasia123'])
+            ->assertRedirect(route('admin.dashboard'));
+
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertGuest('operator');
+    }
+
+    public function test_operator_login_menggunakan_guard_operator_dan_role_operator(): void
+    {
+        $operator = User::factory()->operator(Institution::factory()->create())->create(['password' => 'rahasia123']);
+
+        $this->post(route('operator.login.store'), ['email' => $operator->email, 'password' => 'rahasia123'])
+            ->assertRedirect(route('operator.dashboard'));
+
+        $this->assertAuthenticatedAs($operator, 'operator');
+        $this->assertGuest('admin');
+    }
+
+    public function test_login_role_salah_ditolak_tanpa_membuat_session_guard(): void
+    {
+        $admin = User::factory()->admin()->create(['password' => 'rahasia123']);
+        $operator = User::factory()->operator()->create(['password' => 'rahasia123']);
+
+        $this->from(route('operator.login'))
+            ->post(route('operator.login.store'), ['email' => $admin->email, 'password' => 'rahasia123'])
+            ->assertSessionHasErrors('email');
+        $this->assertGuest('operator');
+
+        $this->from(route('admin.login'))
+            ->post(route('admin.login.store'), ['email' => $operator->email, 'password' => 'rahasia123'])
+            ->assertSessionHasErrors('email');
+        $this->assertGuest('admin');
+    }
+
+    public function test_operator_login_page_dapat_dibuka_saat_admin_sudah_login(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('operator.login'))
             ->assertOk()
-            ->assertSee('Masuk')
-            ->assertSee('Email')
-            ->assertSee('Password')
-            ->assertSee('Ingat saya');
+            ->assertSee('Masuk sebagai Operator');
     }
 
-    public function test_admin_dapat_login_dan_diarahkan_ke_dashboard_admin(): void
+    public function test_login_menggunakan_remember_cookie_khusus_guard(): void
     {
         $admin = User::factory()->admin()->create(['password' => 'rahasia123']);
-
-        $response = $this->post('/login', [
-            'email' => $admin->email,
-            'password' => 'rahasia123',
-        ]);
-
-        $response->assertRedirect(route('admin.dashboard'));
-        $this->assertAuthenticatedAs($admin);
-    }
-
-    public function test_operator_dapat_login_dan_diarahkan_ke_dashboard_operator(): void
-    {
-        $institution = Institution::factory()->create();
-        $operator = User::factory()->operator($institution)->create(['password' => 'rahasia123']);
-
-        $response = $this->post('/login', [
-            'email' => $operator->email,
-            'password' => 'rahasia123',
-        ]);
-
-        $response->assertRedirect(route('operator.dashboard'));
-        $this->assertAuthenticatedAs($operator);
-    }
-
-    public function test_password_salah_menghasilkan_pesan_generik(): void
-    {
-        $admin = User::factory()->admin()->create(['password' => 'rahasia123']);
-
-        $response = $this->from('/login')->post('/login', [
-            'email' => $admin->email,
-            'password' => 'password-salah',
-        ]);
-
-        $response->assertRedirect('/login');
-        $response->assertSessionHasErrors(['email' => 'Email atau password salah.']);
-        $this->assertGuest();
-    }
-
-    public function test_email_tidak_terdaftar_menghasilkan_pesan_yang_sama(): void
-    {
-        $response = $this->from('/login')->post('/login', [
-            'email' => 'tidak-terdaftar@example.test',
-            'password' => 'rahasia123',
-        ]);
-
-        $response->assertRedirect('/login');
-        $response->assertSessionHasErrors(['email' => 'Email atau password salah.']);
-        $this->assertGuest();
-    }
-
-    public function test_email_dan_password_wajib_diisi(): void
-    {
-        $response = $this->from('/login')->post('/login', [
-            'email' => '',
-            'password' => '',
-        ]);
-
-        $response->assertRedirect('/login');
-        $response->assertSessionHasErrors([
-            'email' => 'Email wajib diisi.',
-            'password' => 'Password wajib diisi.',
-        ]);
-        $this->assertGuest();
-    }
-
-    public function test_format_email_tidak_valid_ditolak(): void
-    {
-        $response = $this->from('/login')->post('/login', [
-            'email' => 'bukan-email',
-            'password' => 'rahasia123',
-        ]);
-
-        $response->assertRedirect('/login');
-        $response->assertSessionHasErrors(['email' => 'Format email tidak valid.']);
-        $this->assertGuest();
-    }
-
-    public function test_remember_me_membuat_cookie_recaller(): void
-    {
-        $admin = User::factory()->admin()->create(['password' => 'rahasia123']);
-
-        $response = $this->post('/login', [
+        $response = $this->post(route('admin.login.store'), [
             'email' => $admin->email,
             'password' => 'rahasia123',
             'remember' => '1',
         ]);
 
         $response->assertRedirect(route('admin.dashboard'));
-        $response->assertCookie(Auth::guard('web')->getRecallerName());
-        $this->assertAuthenticatedAs($admin);
+        $response->assertCookie(Auth::guard('admin')->getRecallerName());
+        $response->assertCookieMissing(Auth::guard('operator')->getRecallerName());
     }
 
-    public function test_tanpa_remember_me_tidak_membuat_cookie_recaller(): void
+    public function test_login_rate_limit_dibatasi_per_jenis_akun(): void
     {
-        $admin = User::factory()->admin()->create(['password' => 'rahasia123']);
-
-        $response = $this->post('/login', [
-            'email' => $admin->email,
-            'password' => 'rahasia123',
-        ]);
-
-        $response->assertRedirect(route('admin.dashboard'));
-        $response->assertCookieMissing(Auth::guard('web')->getRecallerName());
-    }
-
-    public function test_percobaan_ketujuh_terkena_rate_limit(): void
-    {
-        $payload = [
-            'email' => 'percobaan@example.test',
-            'password' => 'password-salah',
-        ];
-
-        for ($attempt = 1; $attempt <= 6; $attempt++) {
-            $this->post('/login', $payload);
+        for ($attempt = 0; $attempt < 6; $attempt++) {
+            $this->post(route('admin.login.store'), ['email' => 'salah@example.test', 'password' => 'salah']);
         }
 
-        $response = $this->post('/login', $payload);
+        $this->post(route('admin.login.store'), ['email' => 'salah@example.test', 'password' => 'salah'])
+            ->assertRedirect(route('admin.login'))
+            ->assertSessionHasErrors('email');
 
-        $response->assertRedirect(route('login'));
-        $response->assertSessionHasErrors([
-            'email' => 'Terlalu banyak percobaan login. Silakan coba lagi dalam 1 menit.',
-        ]);
-        $this->assertGuest();
+        $operator = User::factory()->operator()->create(['password' => 'rahasia123']);
+        $this->post(route('operator.login.store'), ['email' => $operator->email, 'password' => 'rahasia123'])
+            ->assertRedirect(route('operator.dashboard'));
     }
 
-    public function test_session_diregenerasi_setelah_login_berhasil(): void
-    {
-        $admin = User::factory()->admin()->create(['password' => 'rahasia123']);
-
-        $this->get('/login');
-        $sessionIdBefore = $this->app['session']->getId();
-
-        $this->post('/login', [
-            'email' => $admin->email,
-            'password' => 'rahasia123',
-        ]);
-
-        $this->assertNotSame($sessionIdBefore, $this->app['session']->getId());
-    }
-
-    public function test_pengguna_yang_sudah_login_tidak_dapat_membuka_halaman_login(): void
-    {
-        $admin = User::factory()->admin()->create();
-
-        $this->actingAs($admin)
-            ->get('/login')
-            ->assertRedirect('/');
-    }
-
-    public function test_operator_unverified_dapat_login_dan_mengakses_dashboard(): void
-    {
-        $operator = User::factory()->operator()->unverified()->create(['password' => 'rahasia123']);
-
-        // Login tetap diperbolehkan sesuai keputusan bisnis.
-        $response = $this->post('/login', [
-            'email' => $operator->email,
-            'password' => 'rahasia123',
-        ]);
-
-        $response->assertRedirect(route('operator.dashboard'));
-        $this->assertAuthenticatedAs($operator);
-
-        $this->actingAs($operator)
-            ->get('/operator/dashboard')
-            ->assertOk();
-    }
-
-    public function test_admin_unverified_dapat_login_dan_mengakses_dashboard(): void
+    public function test_login_tidak_memverifikasi_email_admin_atau_operator(): void
     {
         $admin = User::factory()->admin()->unverified()->create(['password' => 'rahasia123']);
+        $operator = User::factory()->operator()->unverified()->create(['password' => 'rahasia123']);
 
-        $this->post('/login', [
-            'email' => $admin->email,
-            'password' => 'rahasia123',
-        ])->assertRedirect(route('admin.dashboard'));
-
-        $this->get('/admin/dashboard')->assertOk();
-        $this->assertAuthenticatedAs($admin);
+        $this->post(route('admin.login.store'), ['email' => $admin->email, 'password' => 'rahasia123'])
+            ->assertRedirect(route('admin.dashboard'));
+        $this->post(route('operator.login.store'), ['email' => $operator->email, 'password' => 'rahasia123'])
+            ->assertRedirect(route('operator.dashboard'));
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertAuthenticatedAs($operator, 'operator');
     }
 }

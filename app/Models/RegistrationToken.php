@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['applicant_id', 'token_hash', 'status', 'expires_at', 'used_at'])]
 #[Hidden(['token_hash'])]
@@ -21,6 +22,12 @@ class RegistrationToken extends Model
     public function applicant(): BelongsTo
     {
         return $this->belongsTo(InternshipApplicant::class);
+    }
+
+    /** @return HasOne<UserIntern, $this> */
+    public function internAccount(): HasOne
+    {
+        return $this->hasOne(UserIntern::class, 'registration_token_id');
     }
 
     /**

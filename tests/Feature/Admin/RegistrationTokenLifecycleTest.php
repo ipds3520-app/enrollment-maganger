@@ -9,6 +9,7 @@ use App\Models\RegistrationToken;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\UsesSqliteTestDatabase;
@@ -158,11 +159,11 @@ class RegistrationTokenLifecycleTest extends TestCase
             ->assertOk()
             ->assertDontSee('Registration Token');
 
-        auth()->logout();
+        Auth::guard('operator')->logout();
         $this->post(route('admin.internship-requests.registration-tokens.replace', [$request, $applicant]))
-            ->assertRedirect(route('login'));
+            ->assertRedirect(route('admin.login'));
         $this->post(route('admin.internship-requests.registration-tokens.revoke', [$request, $token]))
-            ->assertRedirect(route('login'));
+            ->assertRedirect(route('admin.login'));
         $this->assertDatabaseCount('registration_tokens', 1);
     }
 

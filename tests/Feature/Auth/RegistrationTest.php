@@ -82,7 +82,7 @@ class RegistrationTest extends TestCase
     public function test_setiap_pendaftaran_membuat_institusi_terpisah_walau_nama_sama(): void
     {
         $this->post('/register', $this->payload())->assertRedirect(route('operator.dashboard'));
-        $this->post('/logout');
+        $this->post(route('operator.logout'));
 
         $this->post('/register', $this->payload([
             'name' => 'Operator Kedua',
@@ -100,7 +100,7 @@ class RegistrationTest extends TestCase
     public function test_data_institusi_operator_lain_tidak_berubah(): void
     {
         $this->post('/register', $this->payload())->assertRedirect(route('operator.dashboard'));
-        $this->post('/logout');
+        $this->post(route('operator.logout'));
 
         $first = User::where('email', 'operator@example.test')->firstOrFail();
         $institution = Institution::findOrFail($first->institution_id);
@@ -250,13 +250,39 @@ class RegistrationTest extends TestCase
         $this->assertDatabaseCount('institutions', 0);
     }
 
-    public function test_pengguna_yang_sudah_login_tidak_dapat_membuka_halaman_registrasi(): void
+    public function test_admin_dapat_membuka_registrasi_operator_tanpa_mengganggu_session_admin(): void
     {
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)
             ->get('/register')
-            ->assertRedirect('/');
+            ->assertOk();
+    }
+
+    public function test_registrasi_operator_tidak_menghapus_session_admin_yang_sudah_aktif(): void
+    {
+        $admin = User::factory()->admin()->create(['password' => 'admin-password']);
+
+        $this->post(route('admin.login.store'), [
+            'email' => $admin->email,
+            'password' => 'admin-password',
+        ])->assertRedirect(route('admin.dashboard'));
+
+        $this->post('/register', $this->payload())
+            ->assertRedirect(route('operator.dashboard'));
+
+        $operator = User::query()->where('email', 'operator@example.test')->firstOrFail();
+        $institution = Institution::query()->findOrFail($operator->institution_id);
+
+        $this->assertSame('admin', $admin->fresh()->role);
+        $this->assertSame('operator', $operator->role);
+        $this->assertSame('SMK Negeri 1 Contoh', $institution->name);
+        $this->assertSame('smk', $institution->type);
+        $this->assertSame('Jl. Pendidikan No. 1', $institution->address);
+        $this->assertSame('021-1234567', $institution->phone);
+        $this->assertSame('info@smk1.test', $institution->email);
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertAuthenticatedAs($operator, 'operator');
     }
 
     public function test_percobaan_registrasi_ketujuh_terkena_rate_limit(): void

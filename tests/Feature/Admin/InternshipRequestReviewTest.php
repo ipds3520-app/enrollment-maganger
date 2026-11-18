@@ -502,12 +502,12 @@ class InternshipRequestReviewTest extends TestCase
         [$operator, $institution] = $this->operator('SMK Guest');
         $request = $this->pendingRequest($operator, $institution);
 
-        $this->get(route('admin.internship-requests.reply-letter', $request))->assertRedirect(route('login'));
-        $this->get(route('operator.internship-requests.reply-letter', $request))->assertRedirect(route('login'));
+        $this->get(route('admin.internship-requests.reply-letter', $request))->assertRedirect(route('admin.login'));
+        $this->get(route('operator.internship-requests.reply-letter', $request))->assertRedirect(route('operator.login'));
         $this->post(route('admin.internship-requests.decision', $request), [
             'decision' => 'approved',
             'reply_letter' => $this->pdfFile(),
-        ])->assertRedirect(route('login'));
+        ])->assertRedirect(route('admin.login'));
     }
 
     public function test_operator_tidak_dapat_melakukan_keputusan_admin(): void

@@ -304,10 +304,10 @@ class InternshipRequestTest extends TestCase
 
     public function test_guest_tidak_dapat_mengakses_fitur_pengajuan(): void
     {
-        $this->get(route('operator.internship-requests.index'))->assertRedirect(route('login'));
-        $this->get(route('operator.internship-requests.create'))->assertRedirect(route('login'));
-        $this->post(route('operator.internship-requests.store'), $this->payload())->assertRedirect(route('login'));
-        $this->get('/operator/internship-requests/1')->assertRedirect(route('login'));
+        $this->get(route('operator.internship-requests.index'))->assertRedirect(route('operator.login'));
+        $this->get(route('operator.internship-requests.create'))->assertRedirect(route('operator.login'));
+        $this->post(route('operator.internship-requests.store'), $this->payload())->assertRedirect(route('operator.login'));
+        $this->get('/operator/internship-requests/1')->assertRedirect(route('operator.login'));
     }
 
     public function test_admin_tidak_dapat_mengakses_fitur_pengajuan_operator(): void

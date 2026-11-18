@@ -54,8 +54,7 @@ class RegisteredUserController extends Controller
         });
 
         // Auto-login agar operator dapat langsung membuka dashboard.
-        Auth::login($user);
-        $request->session()->regenerate();
+        Auth::guard('operator')->login($user);
 
         return redirect()->route('operator.dashboard');
     }

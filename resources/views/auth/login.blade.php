@@ -1,7 +1,7 @@
 @extends('layouts.guest')
 
-@section('title', 'Masuk')
-@section('heading', 'Masuk')
+@section('title', 'Masuk '.$accountLabel)
+@section('heading', 'Masuk sebagai '.$accountLabel)
 
 @section('content')
     @if (session('status'))
@@ -18,7 +18,16 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('login.store') }}">
+    @php
+        $loginRoute = match ($accountType) {
+            'admin' => 'admin.login.store',
+            'operator' => 'operator.login.store',
+            default => 'intern.login.store',
+        };
+        $forgotRoute = $accountType === 'intern' ? 'intern.password.request' : 'password.request';
+    @endphp
+
+    <form method="POST" action="{{ route($loginRoute) }}">
         @csrf
 
         <div class="form-group">
@@ -56,10 +65,15 @@
     </form>
 
     <p class="auth-links">
-        <a href="{{ route('password.request') }}">Lupa password?</a>
+        <a href="{{ route($forgotRoute) }}">Lupa password?</a>
     </p>
 
     <p class="auth-links">
-        Belum punya akun? <a href="{{ route('register') }}">Daftar sebagai operator</a>
+        <a href="{{ route('login') }}">Pilih jenis akun lain</a>
+        @if ($accountType === 'operator')
+            <br>Belum punya akun? <a href="{{ route('register') }}">Daftar sebagai operator</a>
+        @elseif ($accountType === 'intern')
+            <br>Sudah mendapat token? <a href="{{ route('intern.register') }}">Daftar akun peserta</a>
+        @endif
     </p>
 @endsection

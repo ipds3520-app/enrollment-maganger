@@ -11,57 +11,81 @@ use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
-    /**
-     * Tampilkan halaman login.
-     */
     public function create(): View
     {
-        return view('auth.login');
+        return view('auth.login-options');
     }
 
-    /**
-     * Proses autentikasi dan arahkan pengguna sesuai role dari database.
-     */
-    public function store(LoginRequest $request): RedirectResponse
+    public function createAdmin(): View
     {
-        $request->authenticate();
-
-        // Cegah session fixation.
-        $request->session()->regenerate();
-
-        $user = $request->user();
-
-        $dashboardRoute = match (true) {
-            $user->isAdmin() => 'admin.dashboard',
-            $user->isOperator() => 'operator.dashboard',
-            default => null,
-        };
-
-        // Defensif: role hanya boleh admin atau operator (dijaga juga oleh
-        // CHECK constraint di database produksi).
-        if ($dashboardRoute === null) {
-            Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return redirect()->route('login')->withErrors([
-                'email' => 'Role akun tidak dikenali. Hubungi administrator.',
-            ]);
-        }
-
-        return redirect()->route($dashboardRoute);
+        return $this->loginView('admin', 'Admin');
     }
 
-    /**
-     * Akhiri sesi login pengguna.
-     */
-    public function destroy(Request $request): RedirectResponse
+    public function createOperator(): View
     {
-        Auth::guard('web')->logout();
+        return $this->loginView('operator', 'Operator');
+    }
 
-        $request->session()->invalidate();
+    public function createIntern(): View
+    {
+        return $this->loginView('intern', 'Peserta Magang');
+    }
+
+    public function storeAdmin(LoginRequest $request): RedirectResponse
+    {
+        return $this->authenticate($request, 'admin', 'admin', 'admin.dashboard');
+    }
+
+    public function storeOperator(LoginRequest $request): RedirectResponse
+    {
+        return $this->authenticate($request, 'operator', 'operator', 'operator.dashboard');
+    }
+
+    public function storeIntern(LoginRequest $request): RedirectResponse
+    {
+        return $this->authenticate($request, 'intern', null, 'intern.dashboard');
+    }
+
+    public function destroyAdmin(Request $request): RedirectResponse
+    {
+        return $this->logoutGuard($request, 'admin', 'admin.login');
+    }
+
+    public function destroyOperator(Request $request): RedirectResponse
+    {
+        return $this->logoutGuard($request, 'operator', 'operator.login');
+    }
+
+    public function destroyIntern(Request $request): RedirectResponse
+    {
+        return $this->logoutGuard($request, 'intern', 'intern.login');
+    }
+
+    private function loginView(string $type, string $label): View
+    {
+        return view('auth.login', [
+            'accountType' => $type,
+            'accountLabel' => $label,
+        ]);
+    }
+
+    private function authenticate(LoginRequest $request, string $guard, ?string $role, string $dashboard): RedirectResponse
+    {
+        $request->authenticate($guard, $role);
+
+        // SessionGuard::login rotates the session identifier while preserving
+        // other guard keys stored in the same browser session.
+        return redirect()->route($dashboard);
+    }
+
+    private function logoutGuard(Request $request, string $guard, string $loginRoute): RedirectResponse
+    {
+        Auth::guard($guard)->logout();
+
+        // Retain the other guards' session values while rotating the identifier.
+        $request->session()->migrate(true);
         $request->session()->regenerateToken();
 
-        return redirect()->route('login')->with('status', 'Anda telah berhasil keluar.');
+        return redirect()->route($loginRoute)->with('status', 'Anda telah berhasil keluar.');
     }
 }

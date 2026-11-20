@@ -3,140 +3,198 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
     <title>@yield('title', 'Dashboard') &mdash; {{ config('app.name', 'Enrollment Magang') }}</title>
-    <style>
-        :root {
-            color-scheme: light;
-            --bg: #f4f6fb;
-            --surface: #ffffff;
-            --border: #dde3ee;
-            --text: #1f2937;
-            --muted: #6b7280;
-            --primary: #2563eb;
-            --primary-soft: #e8efff;
-            --danger: #b91c1c;
-            --danger-soft: #fdecec;
-            --success: #15803d;
-            --success-soft: #e8f7ee;
-        }
 
-        * { box-sizing: border-box; }
+    @include('layouts.partials.theme-init')
 
-        body {
-            margin: 0;
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.55;
-        }
-
-        a { color: var(--primary); }
-
-        .topbar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 14px 24px;
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .brand { font-weight: 700; font-size: 1.05rem; }
-
-        .user-info { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
-
-        .badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 999px;
-            background: var(--primary-soft);
-            color: var(--primary);
-            font-size: 0.78rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }
-
-        .container { max-width: 960px; margin: 0 auto; padding: 28px 24px 56px; }
-
-        h1 { font-size: 1.5rem; margin: 0 0 6px; }
-        h2 { font-size: 1.05rem; margin: 0 0 14px; }
-
-        .muted { color: var(--muted); }
-        .subtitle { margin: 0 0 24px; color: var(--muted); }
-
-        .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 20px 22px;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-        }
-
-        dl.detail { display: grid; grid-template-columns: 120px 1fr; gap: 8px 14px; margin: 0; }
-        dl.detail dt { color: var(--muted); font-size: 0.88rem; }
-        dl.detail dd { margin: 0; font-weight: 500; word-break: break-word; }
-
-        .status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
-        .status-ok { background: var(--success-soft); color: var(--success); }
-        .status-wait { background: var(--danger-soft); color: var(--danger); }
-
-        .notice {
-            margin: 0;
-            padding: 12px 16px;
-            border-radius: 10px;
-            background: var(--primary-soft);
-            color: #1e3a8a;
-            font-size: 0.92rem;
-        }
-
-        .logout-form { margin: 0; }
-
-        .logout-button {
-            padding: 6px 12px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: var(--surface);
-            color: var(--text);
-            font-size: 0.85rem;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-        }
-
-        .logout-button:hover {
-            background: var(--danger-soft);
-            border-color: #f3c5c5;
-            color: var(--danger);
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    @stack('head')
 </head>
 <body>
-    <header class="topbar">
-        <div class="brand">{{ config('app.name', 'Enrollment Magang') }}</div>
-        @php
-            $currentUser = request()->user();
-            $dashboardArea = request()->routeIs('admin.*') ? 'admin' : (request()->routeIs('operator.*') ? 'operator' : 'intern');
-            $logoutRoute = $dashboardArea.'.logout';
-        @endphp
-        @if ($currentUser)
-            <div class="user-info">
-                <span>{{ $currentUser->name }}</span>
-                <span class="badge">{{ ucfirst($dashboardArea) }}</span>
-                <form class="logout-form" method="POST" action="{{ route($logoutRoute) }}">
-                    @csrf
-                    <button type="submit" class="logout-button">Keluar</button>
-                </form>
-            </div>
-        @endif
-    </header>
+    @php
+        $currentUser = request()->user();
+        $dashboardArea = request()->routeIs('admin.*') ? 'admin' : (request()->routeIs('operator.*') ? 'operator' : 'intern');
+        $logoutRoute = $dashboardArea.'.logout';
 
-    <main class="container">
-        @yield('content')
-    </main>
+        $roleLabel = match ($dashboardArea) {
+            'admin' => 'Admin',
+            'operator' => 'Operator',
+            default => 'Peserta Magang',
+        };
+
+        $navGroups = match ($dashboardArea) {
+            'admin' => [
+                [
+                    'label' => 'Menu utama',
+                    'items' => [
+                        ['route' => 'admin.dashboard', 'label' => 'Dashboard', 'icon' => 'dashboard', 'active' => 'admin.dashboard'],
+                    ],
+                ],
+                [
+                    'label' => 'Manajemen',
+                    'items' => [
+                        ['route' => 'admin.internship-requests.index', 'label' => 'Pengajuan magang', 'icon' => 'file-text', 'active' => 'admin.internship-requests.*'],
+                        ['route' => 'admin.intern-password-reset-requests.index', 'label' => 'Reset password peserta', 'icon' => 'key', 'active' => 'admin.intern-password-reset-requests.*'],
+                    ],
+                ],
+            ],
+            'operator' => [
+                [
+                    'label' => 'Menu utama',
+                    'items' => [
+                        ['route' => 'operator.dashboard', 'label' => 'Dashboard', 'icon' => 'dashboard', 'active' => 'operator.dashboard'],
+                    ],
+                ],
+                [
+                    'label' => 'Pengajuan',
+                    'items' => [
+                        ['route' => 'operator.internship-requests.index', 'label' => 'Daftar pengajuan', 'icon' => 'file-text', 'active' => ['operator.internship-requests.index', 'operator.internship-requests.show']],
+                        ['route' => 'operator.internship-requests.create', 'label' => 'Buat pengajuan', 'icon' => 'plus', 'active' => 'operator.internship-requests.create'],
+                    ],
+                ],
+            ],
+            default => [
+                [
+                    'label' => 'Menu utama',
+                    'items' => [
+                        ['route' => 'intern.dashboard', 'label' => 'Dashboard', 'icon' => 'dashboard', 'active' => 'intern.dashboard'],
+                    ],
+                ],
+                [
+                    'label' => 'Akun',
+                    'items' => [
+                        ['route' => 'intern.profile.show', 'label' => 'Data pribadi', 'icon' => 'user', 'active' => 'intern.profile.*'],
+                    ],
+                ],
+            ],
+        };
+
+        $initials = collect(preg_split('/\s+/', trim((string) $currentUser?->name)) ?: [])
+            ->filter()
+            ->take(2)
+            ->map(fn (string $part): string => mb_strtoupper(mb_substr($part, 0, 1)))
+            ->implode('');
+        $initials = $initials !== '' ? $initials : '?';
+    @endphp
+
+    <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
+
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar" aria-label="Navigasi utama">
+            <div class="sidebar-header">
+                <a class="brand" href="{{ route($dashboardArea.'.dashboard') }}">
+                    <span class="brand-mark">
+                        @include('layouts.partials.icon', ['name' => 'graduation-cap'])
+                    </span>
+                    <span class="brand-text">
+                        <span class="brand-name">{{ config('app.name', 'Enrollment Magang') }}</span>
+                        <span class="brand-sub">Sistem Administrasi</span>
+                    </span>
+                </a>
+                <button type="button" class="icon-btn sidebar-close" data-sidebar-close aria-label="Tutup menu">
+                    @include('layouts.partials.icon', ['name' => 'x'])
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                @foreach ($navGroups as $group)
+                    <div class="nav-group">
+                        <p class="nav-group-label">{{ $group['label'] }}</p>
+                        @foreach ($group['items'] as $item)
+                            @php($isActive = request()->routeIs($item['active']))
+                            <a
+                                class="nav-item {{ $isActive ? 'is-active' : '' }}"
+                                href="{{ route($item['route']) }}"
+                                @if ($isActive) aria-current="page" @endif
+                            >
+                                @include('layouts.partials.icon', ['name' => $item['icon']])
+                                <span>{{ $item['label'] }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                @endforeach
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-footer-meta">
+                    @include('layouts.partials.icon', ['name' => 'shield-check'])
+                    <span>Masuk sebagai {{ $roleLabel }}</span>
+                </div>
+            </div>
+        </aside>
+
+        <button type="button" class="sidebar-overlay" data-sidebar-overlay data-sidebar-close hidden aria-label="Tutup menu"></button>
+
+        <div class="app-main">
+            <header class="navbar">
+                <div class="navbar-left">
+                    <button
+                        type="button"
+                        class="icon-btn navbar-menu"
+                        data-sidebar-toggle
+                        aria-label="Buka menu"
+                        aria-controls="sidebar"
+                        aria-expanded="false"
+                    >
+                        @include('layouts.partials.icon', ['name' => 'menu'])
+                    </button>
+
+                    <div class="navbar-title">
+                        <span class="navbar-breadcrumb">{{ $roleLabel }}<span class="sep">/</span>Ruang kerja</span>
+                        <span class="navbar-heading">@yield('title', 'Dashboard')</span>
+                    </div>
+                </div>
+
+                <div class="navbar-right">
+                    <button type="button" class="icon-btn theme-toggle" data-theme-toggle aria-label="Ganti tema" title="Ganti tema">
+                        @include('layouts.partials.icon', ['name' => 'sun', 'class' => 'icon icon-sun'])
+                        @include('layouts.partials.icon', ['name' => 'moon', 'class' => 'icon icon-moon'])
+                    </button>
+
+                    @if ($currentUser)
+                        <div class="profile" data-profile>
+                            <button
+                                type="button"
+                                class="profile-trigger"
+                                data-profile-toggle
+                                aria-haspopup="menu"
+                                aria-expanded="false"
+                                aria-controls="profile-menu"
+                            >
+                                <span class="avatar" aria-hidden="true">{{ $initials }}</span>
+                                <span class="profile-meta">
+                                    <span class="profile-name">{{ $currentUser->name }}</span>
+                                    <span class="profile-role">{{ $roleLabel }}</span>
+                                </span>
+                                @include('layouts.partials.icon', ['name' => 'chevron-down', 'class' => 'icon profile-chevron'])
+                            </button>
+
+                            <div class="profile-menu" id="profile-menu" data-profile-menu role="menu" hidden>
+                                <div class="profile-menu-head">
+                                    <strong>{{ $currentUser->name }}</strong>
+                                    <span>{{ $currentUser->email }}</span>
+                                </div>
+                                <form method="POST" action="{{ route($logoutRoute) }}">
+                                    @csrf
+                                    <button type="submit" class="profile-menu-item danger" role="menuitem">
+                                        @include('layouts.partials.icon', ['name' => 'log-out'])
+                                        <span>Keluar</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </header>
+
+            <main class="content" id="main-content">
+                @yield('content')
+            </main>
+        </div>
+    </div>
+
+    <script src="{{ asset('js/app.js') }}" defer></script>
+    @stack('scripts')
 </body>
 </html>

@@ -6,6 +6,7 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::defaultView('vendor.pagination.app');
+        Paginator::defaultSimpleView('vendor.pagination.app');
+
         // Maksimal 6 percobaan login per menit, dikunci berdasarkan
         // kombinasi email (lowercase) dan alamat IP.
         RateLimiter::for('login', function (Request $request) {

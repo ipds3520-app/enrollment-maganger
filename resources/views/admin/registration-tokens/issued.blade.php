@@ -3,47 +3,78 @@
 @section('title', 'Registration Token Diterbitkan')
 
 @section('content')
-    <h1>{{ ($replacement ?? false) ? 'Token Peserta Diterbitkan' : 'Pengajuan Disetujui' }}</h1>
-    <p class="subtitle">{{ $internshipRequest->title }} · {{ $internshipRequest->institution->name }}</p>
-
-    <section class="card" style="margin-bottom:18px">
-        <p role="alert" style="margin:0 0 16px;color:#92400e;font-weight:600">
-            Token asli hanya ditampilkan pada respons ini. Salin dan distribusikan dengan aman; token tidak dapat dilihat kembali.
-        </p>
-
-        <div style="display:grid;gap:14px">
-            @foreach ($issuedTokens as $index => $item)
-                <article style="padding:14px;border:1px solid #dde3ee;border-radius:10px">
-                    <h2 style="font-size:1rem;margin:0 0 10px">{{ $item['applicant']->name }}</h2>
-                    <dl class="detail">
-                        <dt>Nomor induk</dt><dd>{{ $item['applicant']->student_number ?: '—' }}</dd>
-                        <dt>Email</dt><dd>{{ $item['applicant']->email }}</dd>
-                        <dt>Kedaluwarsa</dt><dd>{{ $item['expires_at']->format('d/m/Y H:i') }}</dd>
-                    </dl>
-                    <label for="registration-token-{{ $index }}">Registration token
-                        <input id="registration-token-{{ $index }}" type="text" readonly value="{{ $item['token'] }}" autocomplete="off" spellcheck="false" style="display:block;width:100%;padding:10px;margin:5px 0 8px;border:1px solid #cbd5e1;border-radius:8px;font-family:monospace">
-                    </label>
-                    <button type="button" data-copy-token="registration-token-{{ $index }}" style="padding:8px 12px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer">Salin token</button>
-                </article>
-            @endforeach
+    <div class="page-header">
+        <div class="page-header-main">
+            <h1 class="page-title">{{ ($replacement ?? false) ? 'Token Peserta Diterbitkan' : 'Pengajuan Disetujui' }}</h1>
+            <p class="page-description">{{ $internshipRequest->title }} &middot; {{ $internshipRequest->institution->name }}</p>
         </div>
-    </section>
+    </div>
 
-    <p><a href="{{ route('admin.internship-requests.show', $internshipRequest) }}">Kembali ke detail pengajuan</a></p>
+    <div class="page-stack">
+        <section class="card">
+            <div class="alert alert-warning" role="alert">
+                @include('layouts.partials.icon', ['name' => 'alert-circle'])
+                <span>Token asli hanya ditampilkan pada respons ini. Salin dan distribusikan dengan aman; token tidak dapat dilihat kembali.</span>
+            </div>
 
-    <script>
-        document.querySelectorAll('[data-copy-token]').forEach((button) => {
-            button.addEventListener('click', async () => {
-                const input = document.getElementById(button.dataset.copyToken);
-                try {
-                    await navigator.clipboard.writeText(input.value);
-                    button.textContent = 'Token tersalin';
-                } catch {
-                    input.select();
-                    document.execCommand('copy');
-                    button.textContent = 'Token tersalin';
-                }
-            });
-        });
-    </script>
+            <div class="list-stack">
+                @foreach ($issuedTokens as $index => $item)
+                    <article class="list-item">
+                        <div class="list-item-header">
+                            <div>
+                                <h2 class="list-item-title">{{ $item['applicant']->name }}</h2>
+                                <p class="list-item-subtitle">{{ $item['applicant']->email }}</p>
+                            </div>
+                        </div>
+
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <p class="detail-label">Nomor induk</p>
+                                <p class="detail-value">{{ $item['applicant']->student_number ?: 'â€”' }}</p>
+                            </div>
+                            <div class="detail-item">
+                                <p class="detail-label">Email</p>
+                                <p class="detail-value">{{ $item['applicant']->email }}</p>
+                            </div>
+                            <div class="detail-item">
+                                <p class="detail-label">Kedaluwarsa</p>
+                                <p class="detail-value">{{ $item['expires_at']->format('d/m/Y H:i') }}</p>
+                            </div>
+                        </div>
+
+                        <div class="field field-spaced">
+                            <label for="registration-token-{{ $index }}">Registration token</label>
+                            <div class="token-box">
+                                <input
+                                    id="registration-token-{{ $index }}"
+                                    class="input mono"
+                                    type="text"
+                                    readonly
+                                    value="{{ $item['token'] }}"
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                >
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    data-copy-target="#registration-token-{{ $index }}"
+                                    data-copy-done="Token tersalin"
+                                >
+                                    @include('layouts.partials.icon', ['name' => 'copy'])
+                                    <span data-copy-label aria-live="polite">Salin token</span>
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                @endforeach
+            </div>
+
+            <div class="form-actions">
+                <a class="btn btn-secondary" href="{{ route('admin.internship-requests.show', $internshipRequest) }}">
+                    @include('layouts.partials.icon', ['name' => 'arrow-left'])
+                    <span>Kembali ke detail pengajuan</span>
+                </a>
+            </div>
+        </section>
+    </div>
 @endsection

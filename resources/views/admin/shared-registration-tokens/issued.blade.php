@@ -3,36 +3,62 @@
 @section('title', 'Shared Registration Token Diterbitkan')
 
 @section('content')
-    <h1>Pengajuan Disetujui</h1>
-    <p class="subtitle">{{ $internshipRequest->title }} · {{ $internshipRequest->institution->name }}</p>
+    <div class="page-header">
+        <div class="page-header-main">
+            <h1 class="page-title">Pengajuan Disetujui</h1>
+            <p class="page-description">{{ $internshipRequest->title }} &middot; {{ $internshipRequest->institution->name }}</p>
+        </div>
+    </div>
 
-    <section class="card" style="margin-bottom:18px">
-        <p role="alert" style="margin:0 0 16px;color:#92400e;font-weight:600">
-            Token plaintext hanya ditampilkan pada hasil penerbitan ini. Salin dan bagikan kepada Operator secara aman. Token tidak dapat dilihat kembali dari halaman detail.
-        </p>
-        <dl class="detail">
-            <dt>Kuota awal</dt><dd>{{ $sharedToken->quota }} peserta</dd>
-            <dt>Jumlah terpakai</dt><dd>{{ $sharedToken->used_count }}</dd>
-        </dl>
-        <label for="shared-registration-token">Shared registration token
-            <input id="shared-registration-token" type="text" readonly value="{{ $plaintextToken }}" autocomplete="off" spellcheck="false" style="display:block;width:100%;padding:10px;margin:5px 0 8px;border:1px solid #cbd5e1;border-radius:8px;font-family:monospace">
-        </label>
-        <button type="button" id="copy-shared-token" style="padding:8px 12px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer">Salin token</button>
-        <p class="muted">Setelah diteruskan kepada Operator, Operator dapat membagikan token yang sama kepada peserta sesuai kuota.</p>
-    </section>
+    <div class="page-stack">
+        <section class="card">
+            <div class="alert alert-warning" role="alert">
+                @include('layouts.partials.icon', ['name' => 'alert-circle'])
+                <span>Token plaintext hanya ditampilkan pada hasil penerbitan ini. Salin dan bagikan kepada Operator secara aman. Token tidak dapat dilihat kembali dari halaman detail.</span>
+            </div>
 
-    <p><a href="{{ route('admin.internship-requests.show', $internshipRequest) }}">Kembali ke detail pengajuan</a></p>
+            <div class="detail-grid detail-grid-spaced">
+                <div class="detail-item">
+                    <p class="detail-label">Kuota awal</p>
+                    <p class="detail-value">{{ $sharedToken->quota }} peserta</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Jumlah terpakai</p>
+                    <p class="detail-value">{{ $sharedToken->used_count }}</p>
+                </div>
+            </div>
 
-    <script>
-        document.getElementById('copy-shared-token').addEventListener('click', async () => {
-            const input = document.getElementById('shared-registration-token');
-            try {
-                await navigator.clipboard.writeText(input.value);
-            } catch {
-                input.select();
-                document.execCommand('copy');
-            }
-            document.getElementById('copy-shared-token').textContent = 'Token tersalin';
-        });
-    </script>
+            <div class="field">
+                <label for="shared-registration-token">Shared registration token</label>
+                <div class="token-box">
+                    <input
+                        id="shared-registration-token"
+                        class="input mono"
+                        type="text"
+                        readonly
+                        value="{{ $plaintextToken }}"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-copy-target="#shared-registration-token"
+                        data-copy-done="Token tersalin"
+                    >
+                        @include('layouts.partials.icon', ['name' => 'copy'])
+                        <span data-copy-label aria-live="polite">Salin token</span>
+                    </button>
+                </div>
+                <span class="field-hint">Setelah diteruskan kepada Operator, token yang sama dapat dibagikan kepada peserta sesuai kuota.</span>
+            </div>
+
+            <div class="form-actions">
+                <a class="btn btn-secondary" href="{{ route('admin.internship-requests.show', $internshipRequest) }}">
+                    @include('layouts.partials.icon', ['name' => 'arrow-left'])
+                    <span>Kembali ke detail pengajuan</span>
+                </a>
+            </div>
+        </section>
+    </div>
 @endsection

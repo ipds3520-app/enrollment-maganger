@@ -1,55 +1,141 @@
 @extends('layouts.app')
 
-@section('title', 'Detail Permintaan Reset Intern')
+@section('title', 'Detail Permintaan Reset Peserta')
+
 
 @section('content')
     @php
         $intern = $resetRequest->intern;
         $applicant = $intern->applicant;
         $internshipRequest = $applicant?->internshipRequest;
+        $statusLabel = match ($resetRequest->status) {
+            'approved' => 'Disetujui',
+            'rejected' => 'Ditolak',
+            default => 'Menunggu',
+        };
+        $statusClass = match ($resetRequest->status) {
+            'approved' => 'badge-success',
+            'rejected' => 'badge-danger',
+            default => 'badge-warning',
+        };
     @endphp
 
-    @if (session('status'))<p class="notice" role="status" style="margin-bottom:16px">{{ session('status') }}</p>@endif
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px">
-        <div><h1>Detail Permintaan Reset</h1><p class="subtitle" style="margin-bottom:0">Verifikasi identitas Intern sebelum mengambil keputusan.</p></div>
-        <a href="{{ route('admin.intern-password-reset-requests.index') }}">Kembali ke daftar</a>
+    <div class="page-header">
+        <div class="page-header-main">
+            <h1 class="page-title">Detail Permintaan Reset</h1>
+            <p class="page-description">Verifikasi identitas peserta sebelum mengambil keputusan.</p>
+        </div>
+        <div class="page-actions">
+            <span class="badge {{ $statusClass }}">{{ $statusLabel }}</span>
+            <a class="btn btn-secondary" href="{{ route('admin.intern-password-reset-requests.index') }}">
+                @include('layouts.partials.icon', ['name' => 'arrow-left'])
+                <span>Daftar permintaan</span>
+            </a>
+        </div>
     </div>
 
-    <section class="card" style="margin-bottom:18px">
-        <h2>Identitas Intern</h2>
-        <dl class="detail">
-            <dt>Nama</dt><dd>{{ $intern->name }}</dd>
-            <dt>Email akun</dt><dd>{{ $intern->email }}</dd>
-            <dt>Nomor identitas</dt><dd>{{ $applicant?->student_number ?: '—' }}</dd>
-            <dt>Institusi asal</dt><dd>{{ $internshipRequest?->institution?->name ?? '—' }}</dd>
-            <dt>Pengajuan magang</dt><dd>{{ $internshipRequest?->title ?? '—' }}</dd>
-            @if ($internshipRequest)
-                <dt>Periode</dt><dd>{{ $internshipRequest->start_date?->format('d/m/Y') ?? '—' }} – {{ $internshipRequest->end_date?->format('d/m/Y') ?? '—' }}</dd>
-                <dt>Status pengajuan</dt><dd>{{ ucfirst($internshipRequest->status) }}</dd>
-            @endif
-        </dl>
-    </section>
-
-    <section class="card" style="margin-bottom:18px">
-        <h2>Permintaan</h2>
-        <dl class="detail">
-            <dt>Status</dt><dd>{{ ucfirst($resetRequest->status) }}</dd>
-            <dt>Diajukan</dt><dd>{{ $resetRequest->created_at?->format('d/m/Y H:i') ?? '—' }}</dd>
-            <dt>Diproses oleh</dt><dd>{{ $resetRequest->processor?->name ?? '—' }}</dd>
-            <dt>Waktu proses</dt><dd>{{ $resetRequest->processed_at?->format('d/m/Y H:i') ?? '—' }}</dd>
-        </dl>
-    </section>
-
-    @if ($resetRequest->status === 'pending')
-        <div style="display:flex;gap:12px">
-            <form method="POST" action="{{ route('admin.intern-password-reset-requests.approve', $resetRequest) }}">
-                @csrf<button class="btn-primary" type="submit" style="width:auto">Setujui dan buat tautan sekali pakai</button>
-            </form>
-            <form method="POST" action="{{ route('admin.intern-password-reset-requests.reject', $resetRequest) }}">
-                @csrf<button class="btn-secondary" type="submit" style="width:auto">Tolak permintaan</button>
-            </form>
+    @if (session('status'))
+        <div class="alert alert-success" role="status">
+            @include('layouts.partials.icon', ['name' => 'check-circle'])
+            <span>{{ session('status') }}</span>
         </div>
-    @else
-        <p class="notice">Permintaan telah diproses. Token reset tidak dapat ditampilkan kembali.</p>
     @endif
+
+    <div class="page-stack">
+        <section class="card">
+            <div class="card-header">
+                <h2 class="card-title">Identitas Intern</h2>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <p class="detail-label">Nama</p>
+                    <p class="detail-value">{{ $intern->name }}</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Email akun</p>
+                    <p class="detail-value">{{ $intern->email }}</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Nomor identitas</p>
+                    <p class="detail-value">{{ $applicant?->student_number ?: '—' }}</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Institusi asal</p>
+                    <p class="detail-value">{{ $internshipRequest?->institution?->name ?? '—' }}</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Pengajuan magang</p>
+                    <p class="detail-value">{{ $internshipRequest?->title ?? '—' }}</p>
+                </div>
+                @if ($internshipRequest)
+                    <div class="detail-item">
+                        <p class="detail-label">Periode</p>
+                        <p class="detail-value">
+                            {{ $internshipRequest->start_date?->format('d/m/Y') ?? '—' }} &ndash; {{ $internshipRequest->end_date?->format('d/m/Y') ?? '—' }}
+                        </p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="detail-label">Status pengajuan</p>
+                        <p class="detail-value">
+                            {{ match ($internshipRequest->status) {
+                                'approved' => 'Disetujui',
+                                'rejected' => 'Ditolak',
+                                default => 'Menunggu diproses',
+                            } }}
+                        </p>
+                    </div>
+                @endif
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-header">
+                <h2 class="card-title">Permintaan</h2>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <p class="detail-label">Status</p>
+                    <p class="detail-value">{{ $statusLabel }}</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Diajukan</p>
+                    <p class="detail-value">{{ $resetRequest->created_at?->format('d/m/Y H:i') ?? '—' }}</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Diproses oleh</p>
+                    <p class="detail-value">{{ $resetRequest->processor?->name ?? '—' }}</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Waktu proses</p>
+                    <p class="detail-value">{{ $resetRequest->processed_at?->format('d/m/Y H:i') ?? '—' }}</p>
+                </div>
+            </div>
+        </section>
+
+        @if ($resetRequest->status === 'pending')
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Keputusan</h2>
+                        <p class="card-description">Setujui untuk membuat tautan reset sekali pakai, atau tolak permintaan ini.</p>
+                    </div>
+                </div>
+                <div class="form-actions form-actions-flush">
+                    <form method="POST" action="{{ route('admin.intern-password-reset-requests.approve', $resetRequest) }}">
+                        @csrf
+                        <button class="btn btn-primary" type="submit">Setujui dan buat tautan</button>
+                    </form>
+                    <form method="POST" action="{{ route('admin.intern-password-reset-requests.reject', $resetRequest) }}">
+                        @csrf
+                        <button class="btn btn-secondary" type="submit">Tolak permintaan</button>
+                    </form>
+                </div>
+            </section>
+        @else
+            <div class="notice">
+                @include('layouts.partials.icon', ['name' => 'info'])
+                <span>Permintaan telah diproses. Token reset tidak dapat ditampilkan kembali.</span>
+            </div>
+        @endif
+    </div>
 @endsection

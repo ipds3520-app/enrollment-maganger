@@ -13,6 +13,7 @@ class DashboardController
     {
         /** @var UserIntern $intern */
         $intern = $request->user('intern');
+        $intern->load(['applicant.internshipRequest.institution', 'sharedRegistrationClaim']);
 
         if ($intern->sharedRegistrationClaim?->status === 'pending_profile') {
             return redirect()->route('intern.profile.show');

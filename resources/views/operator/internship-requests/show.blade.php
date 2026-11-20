@@ -9,88 +9,215 @@
             'rejected' => 'Ditolak',
             default => 'Menunggu diproses',
         };
+        $statusClass = match ($internshipRequest->status) {
+            'approved' => 'badge-success',
+            'rejected' => 'badge-danger',
+            default => 'badge-warning',
+        };
     @endphp
 
-    @if (session('status'))
-        <p class="notice" role="status" style="margin-bottom:16px">{{ session('status') }}</p>
-    @endif
-
-    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px">
-        <div>
-            <h1>Detail Pengajuan</h1>
-            <p class="subtitle" style="margin-bottom:0">Informasi permohonan dan calon peserta.</p>
+    <div class="page-header">
+        <div class="page-header-main">
+            <h1 class="page-title">Detail Pengajuan Magang</h1>
+            <p class="page-description">Informasi permohonan dan calon peserta dari institusi Anda.</p>
         </div>
-        <span class="badge" style="text-transform:none;letter-spacing:0">{{ $statusLabel }}</span>
+        <div class="page-actions">
+            <span class="badge {{ $statusClass }}">{{ $statusLabel }}</span>
+            <a class="btn btn-secondary" href="{{ route('operator.internship-requests.index') }}">
+                @include('layouts.partials.icon', ['name' => 'arrow-left'])
+                <span>Daftar pengajuan</span>
+            </a>
+        </div>
     </div>
 
-    <section class="card" style="margin-bottom:18px">
-        <h2>Informasi Permohonan</h2>
-        <dl class="detail">
-            <dt>Judul</dt><dd>{{ $internshipRequest->title }}</dd>
-            <dt>Deskripsi</dt><dd>{{ $internshipRequest->description ?: '—' }}</dd>
-            <dt>Tanggal Mulai</dt><dd>{{ $internshipRequest->start_date->format('d/m/Y') }}</dd>
-            <dt>Tanggal Selesai</dt><dd>{{ $internshipRequest->end_date->format('d/m/Y') }}</dd>
-            <dt>Jumlah peserta diajukan</dt><dd>{{ $internshipRequest->participant_count ?? $internshipRequest->applicants->count() }} peserta</dd>
-            <dt>Diajukan</dt><dd>{{ $internshipRequest->created_at?->format('d/m/Y H:i') ?? '—' }}</dd>
-            <dt>Status</dt><dd>{{ $statusLabel }}</dd>
-        </dl>
-    </section>
-
-    @if ($internshipRequest->sharedRegistrationToken)
-        @php($sharedToken = $internshipRequest->sharedRegistrationToken)
-        <section class="card" style="margin-bottom:18px">
-            <h2>Status Registrasi Peserta</h2>
-            <dl class="detail">
-                <dt>Kuota</dt><dd>{{ $sharedToken->quota }}</dd>
-                <dt>Profil selesai</dt><dd>{{ $sharedToken->used_count }}</dd>
-                <dt>Sisa kuota</dt><dd>{{ max(0, $sharedToken->quota - $sharedToken->used_count) }}</dd>
-                <dt>Status token</dt><dd>{{ $sharedToken->status }}</dd>
-            </dl>
-            <p class="muted">Token dibagikan oleh Admin setelah persetujuan. Token asli tidak ditampilkan pada halaman ini.</p>
-        </section>
-    @endif
-
-    <section class="card" style="margin-bottom:18px">
-        <h2>Proposal Magang</h2>
-        @if ($internshipRequest->proposal_path)
-            <p style="margin:0"><a href="{{ route('operator.internship-requests.proposal', $internshipRequest) }}">Unduh proposal PDF</a></p>
-        @else
-            <p class="muted" style="margin:0">Proposal belum tersedia untuk pengajuan ini.</p>
-        @endif
-    </section>
-
-    <section class="card">
-        <h2>Peserta Terdaftar ({{ $internshipRequest->applicants->count() }} / {{ $internshipRequest->participant_count ?? $internshipRequest->applicants->count() }})</h2>
-        <div style="display:grid;gap:12px">
-            @foreach ($internshipRequest->applicants as $applicant)
-                <article style="padding:14px;border:1px solid #dde3ee;border-radius:10px">
-                    <h3 style="font-size:1rem;margin:0 0 10px">{{ $applicant->name }}</h3>
-                    <dl class="detail">
-                        <dt>Email</dt><dd>{{ $applicant->email }}</dd>
-                        <dt>Telepon</dt><dd>{{ $applicant->phone ?: '—' }}</dd>
-                        <dt>Nomor Induk</dt><dd>{{ $applicant->student_number ?: '—' }}</dd>
-                        <dt>Jurusan</dt><dd>{{ $applicant->school_major ?: '—' }}</dd>
-                        @if ($applicant->nik)
-                            <dt>NIK</dt><dd>{{ $applicant->nik }}</dd>
-                            <dt>Asal kampus/sekolah</dt><dd>{{ $applicant->school_name ?: '—' }}</dd>
-                            <dt>Alamat</dt><dd>{{ $applicant->address ?: '—' }}</dd>
-                            <dt>Tanggal lahir</dt><dd>{{ $applicant->birth_date?->format('d/m/Y') ?? '—' }}</dd>
-                            <dt>Jenis kelamin</dt><dd>{{ $applicant->gender ?: '—' }}</dd>
-                        @endif
-                        @if ($applicant->sharedRegistrationClaim)
-                            <dt>Status profil</dt><dd>{{ $applicant->sharedRegistrationClaim->status === 'completed' ? 'Lengkap' : 'Belum lengkap' }}</dd>
-                        @endif
-                    </dl>
-                </article>
-            @endforeach
+    @if (session('status'))
+        <div class="alert alert-success" role="status">
+            @include('layouts.partials.icon', ['name' => 'check-circle'])
+            <span>{{ session('status') }}</span>
         </div>
-    </section>
-
-    @if (in_array($internshipRequest->status, ['approved', 'rejected'], true) && $internshipRequest->reply_letter_path)
-        <p style="margin-top:18px">
-            <a href="{{ route('operator.internship-requests.reply-letter', $internshipRequest) }}">Unduh surat balasan PDF</a>
-        </p>
     @endif
 
-    <p style="margin-top:18px"><a href="{{ route('operator.internship-requests.index') }}">Kembali ke daftar pengajuan</a></p>
+    <div class="page-stack">
+        <section class="card">
+            <div class="card-header">
+                <h2 class="card-title">Informasi Permohonan</h2>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <p class="detail-label">Judul</p>
+                    <p class="detail-value">{{ $internshipRequest->title }}</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Status</p>
+                    <p class="detail-value">{{ $statusLabel }}</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Tanggal mulai</p>
+                    <p class="detail-value">{{ $internshipRequest->start_date->format('d/m/Y') }}</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Tanggal selesai</p>
+                    <p class="detail-value">{{ $internshipRequest->end_date->format('d/m/Y') }}</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Jumlah peserta diajukan</p>
+                    <p class="detail-value">{{ $internshipRequest->participant_count ?? $internshipRequest->applicants->count() }} peserta</p>
+                </div>
+                <div class="detail-item">
+                    <p class="detail-label">Diajukan</p>
+                    <p class="detail-value">{{ $internshipRequest->created_at?->format('d/m/Y H:i') ?? '—' }}</p>
+                </div>
+                <div class="detail-item detail-item-wide">
+                    <p class="detail-label">Deskripsi</p>
+                    <p class="detail-value muted">{{ $internshipRequest->description ?: '—' }}</p>
+                </div>
+            </div>
+        </section>
+
+        @if ($internshipRequest->sharedRegistrationToken)
+            @php
+                $sharedToken = $internshipRequest->sharedRegistrationToken;
+                $sharedStatusLabel = match ($sharedToken->status) {
+                    'active' => 'Aktif',
+                    'exhausted' => 'Kuota habis',
+                    'revoked' => 'Dicabut',
+                    default => ucfirst($sharedToken->status),
+                };
+                $sharedStatusClass = match ($sharedToken->status) {
+                    'active' => 'badge-success',
+                    'revoked' => 'badge-danger',
+                    default => 'badge-neutral',
+                };
+            @endphp
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Status Registrasi Peserta</h2>
+                        <p class="card-description">Kuota peserta berdasarkan persetujuan admin.</p>
+                    </div>
+                    <span class="badge {{ $sharedStatusClass }}">{{ $sharedStatusLabel }}</span>
+                </div>
+
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <p class="detail-label">Kuota</p>
+                        <p class="detail-value">{{ $sharedToken->quota }} peserta</p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="detail-label">Profil selesai</p>
+                        <p class="detail-value">{{ $sharedToken->used_count }}</p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="detail-label">Sisa kuota</p>
+                        <p class="detail-value">{{ max(0, $sharedToken->quota - $sharedToken->used_count) }}</p>
+                    </div>
+                </div>
+
+                <p class="card-note">Token dibagikan oleh Admin setelah persetujuan. Token asli tidak ditampilkan pada halaman ini.</p>
+            </section>
+        @endif
+
+        <section class="card">
+            <div class="card-header">
+                <h2 class="card-title">Proposal Magang</h2>
+            </div>
+            @if ($internshipRequest->proposal_path)
+                <a class="btn btn-secondary" href="{{ route('operator.internship-requests.proposal', $internshipRequest) }}">
+                    @include('layouts.partials.icon', ['name' => 'download'])
+                    <span>Unduh proposal PDF</span>
+                </a>
+            @else
+                <p class="muted">Proposal belum tersedia untuk pengajuan ini.</p>
+            @endif
+        </section>
+
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Peserta Terdaftar</h2>
+                    <p class="card-description">
+                        {{ $internshipRequest->applicants->count() }} / {{ $internshipRequest->participant_count ?? $internshipRequest->applicants->count() }} peserta
+                    </p>
+                </div>
+            </div>
+
+            @if ($internshipRequest->applicants->isEmpty())
+                <div class="empty-state">
+                    @include('layouts.partials.icon', ['name' => 'users'])
+                    <h3 class="empty-state-title">Belum ada peserta</h3>
+                    <p class="empty-state-text">Peserta akan muncul setelah mendaftar menggunakan token yang dibagikan.</p>
+                </div>
+            @else
+                <div class="list-stack">
+                    @foreach ($internshipRequest->applicants as $applicant)
+                        <article class="list-item">
+                            <div class="list-item-header">
+                                <div>
+                                    <h3 class="list-item-title">{{ $applicant->name }}</h3>
+                                    <p class="list-item-subtitle">{{ $applicant->email }}</p>
+                                </div>
+                                @if ($applicant->sharedRegistrationClaim)
+                                    @php
+                                        $profileComplete = $applicant->sharedRegistrationClaim->status === 'completed';
+                                    @endphp
+                                    <span class="badge {{ $profileComplete ? 'badge-success' : 'badge-warning' }}">
+                                        {{ $profileComplete ? 'Profil lengkap' : 'Profil belum lengkap' }}
+                                    </span>
+                                @endif
+                            </div>
+
+                            <div class="detail-grid">
+                                <div class="detail-item">
+                                    <p class="detail-label">Telepon</p>
+                                    <p class="detail-value">{{ $applicant->phone ?: '—' }}</p>
+                                </div>
+                                <div class="detail-item">
+                                    <p class="detail-label">Nomor induk</p>
+                                    <p class="detail-value">{{ $applicant->student_number ?: '—' }}</p>
+                                </div>
+                                <div class="detail-item">
+                                    <p class="detail-label">Jurusan</p>
+                                    <p class="detail-value">{{ $applicant->school_major ?: '—' }}</p>
+                                </div>
+                                @if ($applicant->nik)
+                                    <div class="detail-item">
+                                        <p class="detail-label">NIK</p>
+                                        <p class="detail-value">{{ $applicant->nik }}</p>
+                                    </div>
+                                    <div class="detail-item">
+                                        <p class="detail-label">Asal kampus/sekolah</p>
+                                        <p class="detail-value">{{ $applicant->school_name ?: '—' }}</p>
+                                    </div>
+                                    <div class="detail-item">
+                                        <p class="detail-label">Alamat</p>
+                                        <p class="detail-value">{{ $applicant->address ?: '—' }}</p>
+                                    </div>
+                                    <div class="detail-item">
+                                        <p class="detail-label">Tanggal lahir</p>
+                                        <p class="detail-value">{{ $applicant->birth_date?->format('d/m/Y') ?? '—' }}</p>
+                                    </div>
+                                    <div class="detail-item">
+                                        <p class="detail-label">Jenis kelamin</p>
+                                        <p class="detail-value">{{ $applicant->gender ?: '—' }}</p>
+                                    </div>
+                                @endif
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
+            @endif
+        </section>
+
+        @if (in_array($internshipRequest->status, ['approved', 'rejected'], true) && $internshipRequest->reply_letter_path)
+            <section class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Surat Balasan</h2>
+                </div>
+                <a class="btn btn-secondary" href="{{ route('operator.internship-requests.reply-letter', $internshipRequest) }}">
+                    @include('layouts.partials.icon', ['name' => 'download'])
+                    <span>Unduh surat balasan PDF</span>
+                </a>
+            </section>
+        @endif
+    </div>
 @endsection

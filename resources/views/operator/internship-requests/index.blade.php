@@ -1,32 +1,50 @@
 @extends('layouts.app')
 
-@section('title', 'Pengajuan Magang')
+@section('title', 'Pengajuan Permohonan Magang')
 
 @section('content')
-    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px">
-        <div>
-            <h1>Pengajuan Permohonan Magang</h1>
-            <p class="subtitle" style="margin-bottom:0">Daftar pengajuan dari institusi Anda.</p>
+    <div class="page-header">
+        <div class="page-header-main">
+            <h1 class="page-title">Pengajuan Permohonan Magang</h1>
+            <p class="page-description">Daftar pengajuan dari institusi Anda beserta statusnya.</p>
         </div>
-        <a href="{{ route('operator.internship-requests.create') }}" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#2563eb;color:#fff;text-decoration:none;font-weight:600">Buat Pengajuan</a>
+        <div class="page-actions">
+            <a class="btn btn-primary" href="{{ route('operator.internship-requests.create') }}">
+                @include('layouts.partials.icon', ['name' => 'plus'])
+                <span>Buat pengajuan</span>
+            </a>
+        </div>
     </div>
 
     @if (session('status'))
-        <p class="notice" role="status" style="margin-bottom:16px">{{ session('status') }}</p>
+        <div class="alert alert-success" role="status">
+            @include('layouts.partials.icon', ['name' => 'check-circle'])
+            <span>{{ session('status') }}</span>
+        </div>
     @endif
 
-    <section class="card" style="overflow-x:auto">
-        @if ($requests->isEmpty())
-            <p class="muted" style="margin:0">Belum ada pengajuan. Pilih “Buat Pengajuan” untuk memulai.</p>
-        @else
-            <table style="width:100%;border-collapse:collapse;min-width:680px">
+    @if ($requests->isEmpty())
+        <div class="table-wrap">
+            <div class="empty-state">
+                @include('layouts.partials.icon', ['name' => 'inbox'])
+                <h2 class="empty-state-title">Belum ada pengajuan</h2>
+                <p class="empty-state-text">Buat pengajuan pertama untuk mengajukan peserta magang dari institusi Anda.</p>
+                <a class="btn btn-primary" href="{{ route('operator.internship-requests.create') }}">
+                    @include('layouts.partials.icon', ['name' => 'plus'])
+                    <span>Buat pengajuan</span>
+                </a>
+            </div>
+        </div>
+    @else
+        <div class="table-wrap">
+            <table class="table">
                 <thead>
-                    <tr style="text-align:left;border-bottom:1px solid #dde3ee">
-                        <th style="padding:10px 8px">Judul</th>
-                        <th style="padding:10px 8px">Periode Magang</th>
-                        <th style="padding:10px 8px">Calon Peserta</th>
-                        <th style="padding:10px 8px">Tanggal Pengajuan</th>
-                        <th style="padding:10px 8px">Status</th>
+                    <tr>
+                        <th scope="col">Judul</th>
+                        <th scope="col">Periode magang</th>
+                        <th scope="col">Calon peserta</th>
+                        <th scope="col">Tanggal pengajuan</th>
+                        <th scope="col">Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -37,20 +55,28 @@
                                 'rejected' => 'Ditolak',
                                 default => 'Menunggu diproses',
                             };
+                            $statusClass = match ($internshipRequest->status) {
+                                'approved' => 'badge-success',
+                                'rejected' => 'badge-danger',
+                                default => 'badge-warning',
+                            };
                         @endphp
-                        <tr style="border-bottom:1px solid #eef1f6">
-                            <td style="padding:12px 8px"><a href="{{ route('operator.internship-requests.show', $internshipRequest) }}">{{ $internshipRequest->title }}</a></td>
-                            <td style="padding:12px 8px">{{ $internshipRequest->start_date->format('d/m/Y') }} – {{ $internshipRequest->end_date->format('d/m/Y') }}</td>
-                            <td style="padding:12px 8px">{{ $internshipRequest->participant_count ?? $internshipRequest->applicants_count }}</td>
-                            <td style="padding:12px 8px">{{ $internshipRequest->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
-                            <td style="padding:12px 8px"><span class="badge" style="text-transform:none;letter-spacing:0">{{ $statusLabel }}</span></td>
+                        <tr>
+                            <td>
+                                <a href="{{ route('operator.internship-requests.show', $internshipRequest) }}">{{ $internshipRequest->title }}</a>
+                            </td>
+                            <td class="cell-muted nowrap">
+                                {{ $internshipRequest->start_date->format('d/m/Y') }} &ndash; {{ $internshipRequest->end_date->format('d/m/Y') }}
+                            </td>
+                            <td class="cell-muted">{{ $internshipRequest->participant_count ?? $internshipRequest->applicants_count }}</td>
+                            <td class="cell-muted nowrap">{{ $internshipRequest->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                            <td><span class="badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
-            <div style="margin-top:16px">{{ $requests->links() }}</div>
-        @endif
-    </section>
+        </div>
 
-    <p style="margin-top:18px"><a href="{{ route('operator.dashboard') }}">Kembali ke dashboard</a></p>
+        {{ $requests->links() }}
+    @endif
 @endsection

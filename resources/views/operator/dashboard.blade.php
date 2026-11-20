@@ -3,58 +3,174 @@
 @section('title', 'Dashboard Operator')
 
 @section('content')
-    <h1>Dashboard Operator</h1>
-    <p class="subtitle">Halaman sementara. Fitur pengelolaan akan ditambahkan pada tahap berikutnya.</p>
-    <p><a href="{{ route('operator.internship-requests.index') }}">Lihat pengajuan permohonan magang</a></p>
+    <div class="page-header">
+        <div class="page-header-main">
+            <h1 class="page-title">Dashboard Operator</h1>
+            <p class="page-description">Ringkasan pengajuan magang untuk institusi Anda.</p>
+        </div>
+        <div class="page-actions">
+            <a class="btn btn-primary" href="{{ route('operator.internship-requests.create') }}">
+                @include('layouts.partials.icon', ['name' => 'plus'])
+                <span>Buat pengajuan</span>
+            </a>
+        </div>
+    </div>
 
-    <div class="grid">
+    @if ($institution === null)
+        <div class="alert alert-warning" role="alert">
+            @include('layouts.partials.icon', ['name' => 'alert-circle'])
+            <span>Akun operator ini belum terhubung ke institusi. Hubungi admin sebelum membuat pengajuan.</span>
+        </div>
+    @endif
+
+    <div class="stat-grid">
+        <div class="stat-card">
+            <span class="stat-label">Total pengajuan</span>
+            <span class="stat-value">{{ number_format($stats['total']) }}</span>
+            <span class="stat-hint">Seluruh pengajuan institusi</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Menunggu</span>
+            <span class="stat-value">{{ number_format($stats['pending']) }}</span>
+            <span class="stat-hint">Menunggu keputusan admin</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Disetujui</span>
+            <span class="stat-value">{{ number_format($stats['approved']) }}</span>
+            <span class="stat-hint">Pengajuan diterima</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Ditolak</span>
+            <span class="stat-value">{{ number_format($stats['rejected']) }}</span>
+            <span class="stat-hint">Pengajuan ditolak</span>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
         <section class="card">
-            <h2>Informasi Akun</h2>
-            <dl class="detail">
-                <dt>Nama</dt>
-                <dd>{{ $user->name }}</dd>
+            <div class="section-header">
+                <div>
+                    <h2 class="section-heading">Pengajuan terbaru</h2>
+                    <p class="section-subheading">Lima pengajuan terakhir dari institusi Anda.</p>
+                </div>
+                <a class="btn btn-ghost btn-sm" href="{{ route('operator.internship-requests.index') }}">Lihat semua</a>
+            </div>
 
-                <dt>Email</dt>
-                <dd>{{ $user->email }}</dd>
-
-                <dt>Role</dt>
-                <dd>Operator</dd>
-
-            </dl>
-        </section>
-
-        <section class="card">
-            <h2>Informasi Institusi</h2>
-
-            @if ($institution)
-                @php
-                    $typeLabel = match ($institution->type) {
-                        'smk' => 'SMK',
-                        'sma' => 'SMA',
-                        'university' => 'Perguruan Tinggi',
-                        default => 'Lainnya',
-                    };
-                @endphp
-
-                <dl class="detail">
-                    <dt>Nama</dt>
-                    <dd>{{ $institution->name }}</dd>
-
-                    <dt>Jenis</dt>
-                    <dd>{{ $typeLabel }}</dd>
-
-                    <dt>Alamat</dt>
-                    <dd>{{ $institution->address ?: 'Belum diisi' }}</dd>
-
-                    <dt>Telepon</dt>
-                    <dd>{{ $institution->phone ?: 'Belum diisi' }}</dd>
-
-                    <dt>Email</dt>
-                    <dd>{{ $institution->email ?: 'Belum diisi' }}</dd>
-                </dl>
+            @if ($recentRequests->isEmpty())
+                <div class="empty-state">
+                    @include('layouts.partials.icon', ['name' => 'inbox'])
+                    <h3 class="empty-state-title">Belum ada pengajuan</h3>
+                    <p class="empty-state-text">Mulai dengan membuat pengajuan permohonan magang untuk institusi Anda.</p>
+                    <a class="btn btn-primary" href="{{ route('operator.internship-requests.create') }}">
+                        @include('layouts.partials.icon', ['name' => 'plus'])
+                        <span>Buat pengajuan</span>
+                    </a>
+                </div>
             @else
-                <p class="notice">Akun operator ini belum terhubung ke institusi mana pun.</p>
+                <div class="table-wrap">
+                    <table class="table table-compact">
+                        <thead>
+                            <tr>
+                                <th scope="col">Judul</th>
+                                <th scope="col">Peserta</th>
+                                <th scope="col">Diajukan</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($recentRequests as $recentRequest)
+                                @php
+                                    $statusLabel = match ($recentRequest->status) {
+                                        'approved' => 'Disetujui',
+                                        'rejected' => 'Ditolak',
+                                        default => 'Menunggu diproses',
+                                    };
+                                    $statusClass = match ($recentRequest->status) {
+                                        'approved' => 'badge-success',
+                                        'rejected' => 'badge-danger',
+                                        default => 'badge-warning',
+                                    };
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <a href="{{ route('operator.internship-requests.show', $recentRequest) }}">{{ $recentRequest->title }}</a>
+                                    </td>
+                                    <td class="cell-muted">{{ $recentRequest->participant_count ?? $recentRequest->applicants_count }}</td>
+                                    <td class="cell-muted nowrap">{{ $recentRequest->created_at?->format('d/m/Y') ?? '—' }}</td>
+                                    <td><span class="badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             @endif
         </section>
+
+        <div class="page-stack">
+            <section class="card">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-heading">Aksi cepat</h2>
+                        <p class="section-subheading">Langkah yang sering digunakan.</p>
+                    </div>
+                </div>
+                <div class="quick-actions">
+                    <a class="quick-action" href="{{ route('operator.internship-requests.create') }}">
+                        @include('layouts.partials.icon', ['name' => 'plus'])
+                        <span>
+                            <span class="quick-action-title">Buat pengajuan baru</span>
+                            <span class="quick-action-text">Ajukan permohonan magang beserta proposal.</span>
+                        </span>
+                    </a>
+                    <a class="quick-action" href="{{ route('operator.internship-requests.index') }}">
+                        @include('layouts.partials.icon', ['name' => 'file-text'])
+                        <span>
+                            <span class="quick-action-title">Daftar pengajuan</span>
+                            <span class="quick-action-text">Pantau status dan peserta setiap pengajuan.</span>
+                        </span>
+                    </a>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-heading">Institusi</h2>
+                        <p class="section-subheading">Data institusi akun Anda.</p>
+                    </div>
+                </div>
+
+                @if ($institution)
+                    @php
+                        $typeLabel = match ($institution->type) {
+                            'smk' => 'SMK',
+                            'sma' => 'SMA',
+                            'university' => 'Perguruan Tinggi',
+                            default => 'Lainnya',
+                        };
+                    @endphp
+                    <dl class="data-list">
+                        <div class="data-row">
+                            <dt>Nama</dt>
+                            <dd>{{ $institution->name }}</dd>
+                        </div>
+                        <div class="data-row">
+                            <dt>Jenis</dt>
+                            <dd>{{ $typeLabel }}</dd>
+                        </div>
+                        <div class="data-row">
+                            <dt>Telepon</dt>
+                            <dd>{{ $institution->phone ?: 'Belum diisi' }}</dd>
+                        </div>
+                        <div class="data-row">
+                            <dt>Email</dt>
+                            <dd>{{ $institution->email ?: 'Belum diisi' }}</dd>
+                        </div>
+                    </dl>
+                @else
+                    <p class="muted">Belum ada institusi yang terhubung.</p>
+                @endif
+            </section>
+        </div>
     </div>
 @endsection

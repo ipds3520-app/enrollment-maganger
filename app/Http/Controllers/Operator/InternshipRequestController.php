@@ -8,6 +8,7 @@ use App\Models\InternshipRequest;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -60,6 +61,7 @@ class InternshipRequestController extends Controller
                     'description' => $data['description'] ?? null,
                     'start_date' => $data['start_date'],
                     'end_date' => $data['end_date'],
+                    'participant_count' => $data['participant_count'],
                 ]);
 
                 $directory = 'proposals/'.$internshipRequest->getKey();
@@ -76,10 +78,6 @@ class InternshipRequestController extends Controller
                 // Assign explicitly: proposal_path is controlled by the server and not mass-assigned.
                 $internshipRequest->proposal_path = $newProposalPath;
                 $internshipRequest->save();
-
-                foreach ($data['applicants'] as $applicant) {
-                    $internshipRequest->applicants()->create($applicant);
-                }
 
                 return $internshipRequest;
             });
@@ -98,18 +96,28 @@ class InternshipRequestController extends Controller
             ->with('status', 'Pengajuan permohonan magang berhasil disimpan.');
     }
 
-    public function show(Request $request, int $internshipRequestId): View
+    public function show(Request $request, int $internshipRequestId): Response
     {
         /** @var User $user */
         $user = $request->user();
         $internshipRequest = $user->institution()
             ->firstOrFail()
             ->internshipRequests()
-            ->with('applicants')
+            ->with(['applicants.sharedRegistrationClaim', 'sharedRegistrationToken'])
             ->findOrFail($internshipRequestId);
 
-        return view('operator.internship-requests.show', [
+        return response()->view('operator.internship-requests.show', [
             'internshipRequest' => $internshipRequest,
-        ]);
+        ])->withHeaders($this->sensitiveHeaders());
+    }
+
+    /** @return array<string, string> */
+    private function sensitiveHeaders(): array
+    {
+        return [
+            'Cache-Control' => 'private, no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Referrer-Policy' => 'no-referrer',
+        ];
     }
 }

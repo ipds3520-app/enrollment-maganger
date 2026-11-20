@@ -14,4 +14,7 @@
             <dd>{{ $intern->email }}</dd>
         </dl>
     </section>
+    @if ($intern->sharedRegistrationClaim?->status === 'completed')
+        <p><a href="{{ route('intern.profile.show') }}">Lihat data pribadi</a></p>
+    @endif
 @endsection

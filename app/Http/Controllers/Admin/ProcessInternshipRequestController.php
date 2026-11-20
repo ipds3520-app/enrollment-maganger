@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\IssueRegistrationTokens;
+use App\Actions\IssueSharedRegistrationToken;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ProcessInternshipRequest as ProcessInternshipRequestForm;
 use App\Models\InternshipRequest;
@@ -22,6 +23,7 @@ class ProcessInternshipRequestController extends Controller
         ProcessInternshipRequestForm $request,
         int $internshipRequestId,
         IssueRegistrationTokens $issueRegistrationTokens,
+        IssueSharedRegistrationToken $issueSharedRegistrationToken,
     ): RedirectResponse|Response {
         $data = $request->validated();
         $file = $request->file('reply_letter');
@@ -30,7 +32,7 @@ class ProcessInternshipRequestController extends Controller
         $disk = Storage::disk('local');
 
         try {
-            [$internshipRequest, $issuedTokens] = DB::transaction(function () use ($data, $file, $adminId, $internshipRequestId, $disk, $issueRegistrationTokens, &$newPath): array {
+            [$internshipRequest, $issuedTokens, $sharedTokenIssue] = DB::transaction(function () use ($data, $file, $adminId, $internshipRequestId, $disk, $issueRegistrationTokens, $issueSharedRegistrationToken, &$newPath): array {
                 $internshipRequest = InternshipRequest::query()
                     ->lockForUpdate()
                     ->findOrFail($internshipRequestId);
@@ -58,11 +60,18 @@ class ProcessInternshipRequestController extends Controller
                 $internshipRequest->reply_letter_path = $newPath;
                 $internshipRequest->save();
 
-                $issuedTokens = $data['decision'] === 'approved'
-                    ? $issueRegistrationTokens->forApprovedRequest($internshipRequest)
-                    : [];
+                $issuedTokens = [];
+                $sharedTokenIssue = null;
 
-                return [$internshipRequest, $issuedTokens];
+                if ($data['decision'] === 'approved') {
+                    if ($internshipRequest->participant_count !== null) {
+                        $sharedTokenIssue = $issueSharedRegistrationToken->forApprovedRequest($internshipRequest);
+                    } else {
+                        $issuedTokens = $issueRegistrationTokens->forApprovedRequest($internshipRequest);
+                    }
+                }
+
+                return [$internshipRequest, $issuedTokens, $sharedTokenIssue];
             });
         } catch (Throwable $exception) {
             if ($newPath !== null && $disk->exists($newPath) && ! $disk->delete($newPath)) {
@@ -76,6 +85,14 @@ class ProcessInternshipRequestController extends Controller
         }
 
         if ($data['decision'] === 'approved') {
+            if ($sharedTokenIssue !== null) {
+                return response()->view('admin.shared-registration-tokens.issued', [
+                    'internshipRequest' => $internshipRequest,
+                    'sharedToken' => $sharedTokenIssue['token'],
+                    'plaintextToken' => $sharedTokenIssue['plaintext'],
+                ])->withHeaders($this->sensitiveHeaders());
+            }
+
             return response()->view('admin.registration-tokens.issued', [
                 'internshipRequest' => $internshipRequest,
                 'issuedTokens' => $issuedTokens,
@@ -89,5 +106,15 @@ class ProcessInternshipRequestController extends Controller
         return redirect()
             ->route('admin.internship-requests.show', $internshipRequest)
             ->with('status', 'Keputusan pengajuan dan surat balasan berhasil disimpan.');
+    }
+
+    /** @return array<string, string> */
+    private function sensitiveHeaders(): array
+    {
+        return [
+            'Cache-Control' => 'private, no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Referrer-Policy' => 'no-referrer',
+        ];
     }
 }

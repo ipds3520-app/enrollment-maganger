@@ -2,7 +2,7 @@
 
 @section('title', 'Registrasi Peserta')
 @section('heading', 'Registrasi Peserta Magang')
-@section('subheading', 'Gunakan registration token yang diberikan oleh admin.')
+@section('subheading', 'Gunakan token yang diberikan oleh Admin. Token lama tetap dapat digunakan.')
 
 @section('content')
     @if (session('status'))
@@ -26,6 +26,16 @@
         <div class="form-group">
             <label for="token">Registration Token</label>
             <input id="token" name="token" type="text" value="" required maxlength="255" autocomplete="off" spellcheck="false" aria-invalid="{{ $errors->has('token') ? 'true' : 'false' }}">
+        </div>
+
+        <div class="form-group">
+            <label for="name">Nama lengkap <span>(wajib untuk shared token)</span></label>
+            <input id="name" name="name" type="text" value="{{ old('name') }}" maxlength="100" autocomplete="name" aria-invalid="{{ $errors->has('name') ? 'true' : 'false' }}">
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email <span>(wajib untuk shared token)</span></label>
+            <input id="email" name="email" type="email" value="{{ old('email') }}" maxlength="150" autocomplete="email" aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}">
         </div>
 
         <div class="form-group">

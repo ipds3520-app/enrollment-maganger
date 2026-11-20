@@ -40,6 +40,7 @@
             <dt>Deskripsi</dt><dd>{{ $internshipRequest->description ?: '—' }}</dd>
             <dt>Tanggal mulai</dt><dd>{{ $internshipRequest->start_date->format('d/m/Y') }}</dd>
             <dt>Tanggal selesai</dt><dd>{{ $internshipRequest->end_date->format('d/m/Y') }}</dd>
+            <dt>Jumlah peserta diajukan</dt><dd>{{ $internshipRequest->participant_count ?? $internshipRequest->applicants->count() }} peserta</dd>
             <dt>Diajukan</dt><dd>{{ $internshipRequest->created_at?->format('d/m/Y H:i') ?? '—' }}</dd>
             <dt>Status</dt><dd>{{ $statusLabel }}</dd>
             @if ($internshipRequest->processed_by)
@@ -50,7 +51,7 @@
     </section>
 
     <section class="card" style="margin-bottom:18px">
-        <h2>Calon Peserta ({{ $internshipRequest->applicants->count() }})</h2>
+        <h2>Peserta Terdaftar ({{ $internshipRequest->applicants->count() }} / {{ $internshipRequest->participant_count ?? $internshipRequest->applicants->count() }})</h2>
         <div style="display:grid;gap:12px">
             @foreach ($internshipRequest->applicants as $applicant)
                 <article style="padding:14px;border:1px solid #dde3ee;border-radius:10px">
@@ -60,9 +61,19 @@
                         <dt>Telepon</dt><dd>{{ $applicant->phone ?: '—' }}</dd>
                         <dt>Nomor induk</dt><dd>{{ $applicant->student_number ?: '—' }}</dd>
                         <dt>Jurusan</dt><dd>{{ $applicant->school_major ?: '—' }}</dd>
+                        @if ($applicant->nik)
+                            <dt>NIK</dt><dd>{{ $applicant->nik }}</dd>
+                            <dt>Asal kampus/sekolah</dt><dd>{{ $applicant->school_name ?: '—' }}</dd>
+                            <dt>Alamat</dt><dd>{{ $applicant->address ?: '—' }}</dd>
+                            <dt>Tanggal lahir</dt><dd>{{ $applicant->birth_date?->format('d/m/Y') ?? '—' }}</dd>
+                            <dt>Jenis kelamin</dt><dd>{{ $applicant->gender ?: '—' }}</dd>
+                        @endif
+                        @if ($applicant->sharedRegistrationClaim)
+                            <dt>Status profil</dt><dd>{{ $applicant->sharedRegistrationClaim->status === 'completed' ? 'Lengkap' : 'Belum lengkap' }}</dd>
+                        @endif
                     </dl>
 
-                    @if ($internshipRequest->status === 'approved')
+                    @if ($internshipRequest->status === 'approved' && ! $internshipRequest->sharedRegistrationToken)
                         @php
                             $tokenHistory = $applicant->registrationTokens->sortByDesc('id');
                             $latestToken = $tokenHistory->first();
@@ -102,6 +113,26 @@
             @endforeach
         </div>
     </section>
+
+    @if ($internshipRequest->sharedRegistrationToken)
+        @php($sharedToken = $internshipRequest->sharedRegistrationToken)
+        <section class="card" style="margin-bottom:18px">
+            <h2>Shared Registration Token</h2>
+            <dl class="detail">
+                <dt>Kuota</dt><dd>{{ $sharedToken->quota }}</dd>
+                <dt>Terpakai</dt><dd>{{ $sharedToken->used_count }}</dd>
+                <dt>Sisa</dt><dd>{{ max(0, $sharedToken->quota - $sharedToken->used_count) }}</dd>
+                <dt>Status</dt><dd>{{ $sharedToken->status }}</dd>
+            </dl>
+            <p class="muted">Plaintext token tidak dapat dilihat kembali. Operator menerima token dari Admin yang meneruskannya setelah approval.</p>
+            @if ($sharedToken->status === 'active')
+                <form method="POST" action="{{ route('admin.internship-requests.shared-registration-token.revoke', $internshipRequest) }}">
+                    @csrf
+                    <button type="submit" style="padding:7px 11px;border:1px solid #b91c1c;border-radius:6px;background:#fff;color:#b91c1c;cursor:pointer">Cabut shared token</button>
+                </form>
+            @endif
+        </section>
+    @endif
 
     <section class="card" style="margin-bottom:18px">
         <h2>Proposal Magang</h2>

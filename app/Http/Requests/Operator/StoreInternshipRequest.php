@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Operator;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Validator;
 
 class StoreInternshipRequest extends FormRequest
 {
@@ -22,13 +21,7 @@ class StoreInternshipRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'start_date' => ['required', 'date_format:Y-m-d'],
             'end_date' => ['required', 'date_format:Y-m-d', 'after:start_date'],
-            'applicants' => ['required', 'array', 'min:1'],
-            'applicants.*' => ['required', 'array:name,email,phone,student_number,school_major'],
-            'applicants.*.name' => ['required', 'string', 'max:100'],
-            'applicants.*.email' => ['required', 'string', 'email', 'max:150'],
-            'applicants.*.phone' => ['nullable', 'string', 'max:20'],
-            'applicants.*.student_number' => ['nullable', 'string', 'max:30'],
-            'applicants.*.school_major' => ['nullable', 'string', 'max:100'],
+            'participant_count' => ['required', 'integer', 'min:1', 'max:2147483647'],
             'proposal' => [
                 'required',
                 'file',
@@ -49,29 +42,6 @@ class StoreInternshipRequest extends FormRequest
         ];
     }
 
-    public function withValidator(Validator $validator): void
-    {
-        $validator->after(function (Validator $validator): void {
-            $applicants = $this->input('applicants', []);
-
-            if (! is_array($applicants)) {
-                return;
-            }
-
-            $numbers = collect($applicants)
-                ->filter(fn ($applicant): bool => is_array($applicant))
-                ->pluck('student_number')
-                ->filter(fn ($number): bool => is_string($number) && trim($number) !== '');
-
-            if ($numbers->count() !== $numbers->unique()->count()) {
-                $validator->errors()->add(
-                    'applicants',
-                    'Nomor induk peserta tidak boleh duplikat dalam satu pengajuan.'
-                );
-            }
-        });
-    }
-
     /**
      * @return array<string, string>
      */
@@ -85,16 +55,10 @@ class StoreInternshipRequest extends FormRequest
             'end_date.required' => 'Tanggal selesai wajib diisi.',
             'end_date.date_format' => 'Format tanggal selesai tidak valid.',
             'end_date.after' => 'Tanggal selesai harus setelah tanggal mulai.',
-            'applicants.required' => 'Tambahkan minimal satu calon peserta.',
-            'applicants.min' => 'Tambahkan minimal satu calon peserta.',
-            'applicants.*.name.required' => 'Nama calon peserta wajib diisi.',
-            'applicants.*.name.max' => 'Nama calon peserta maksimal 100 karakter.',
-            'applicants.*.email.required' => 'Email calon peserta wajib diisi.',
-            'applicants.*.email.email' => 'Format email calon peserta tidak valid.',
-            'applicants.*.email.max' => 'Email calon peserta maksimal 150 karakter.',
-            'applicants.*.phone.max' => 'Nomor telepon maksimal 20 karakter.',
-            'applicants.*.student_number.max' => 'Nomor induk maksimal 30 karakter.',
-            'applicants.*.school_major.max' => 'Jurusan maksimal 100 karakter.',
+            'participant_count.required' => 'Jumlah peserta wajib diisi.',
+            'participant_count.integer' => 'Jumlah peserta harus berupa bilangan bulat.',
+            'participant_count.min' => 'Jumlah peserta minimal satu orang.',
+            'participant_count.max' => 'Jumlah peserta terlalu besar.',
             'proposal.required' => 'Proposal magang wajib diunggah.',
             'proposal.file' => 'File proposal tidak valid.',
             'proposal.mimes' => 'Proposal harus berformat PDF.',

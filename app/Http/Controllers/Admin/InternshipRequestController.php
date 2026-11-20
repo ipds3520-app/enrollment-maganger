@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\InternshipRequest;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -39,19 +40,29 @@ class InternshipRequestController extends Controller
         ]);
     }
 
-    public function show(int $internshipRequestId): View
+    public function show(int $internshipRequestId): Response
     {
         $internshipRequest = InternshipRequest::query()
-            ->with(['institution', 'creator', 'processor', 'applicants.registrationTokens'])
+            ->with(['institution', 'creator', 'processor', 'applicants.registrationTokens', 'applicants.sharedRegistrationClaim.intern', 'sharedRegistrationToken'])
             ->findOrFail($internshipRequestId);
         $accountApplicantIds = DB::table('users_intern')
             ->whereIn('applicant_id', $internshipRequest->applicants->modelKeys())
             ->pluck('applicant_id')
             ->all();
 
-        return view('admin.internship-requests.show', [
+        return response()->view('admin.internship-requests.show', [
             'internshipRequest' => $internshipRequest,
             'accountApplicantIds' => $accountApplicantIds,
-        ]);
+        ])->withHeaders($this->sensitiveHeaders());
+    }
+
+    /** @return array<string, string> */
+    private function sensitiveHeaders(): array
+    {
+        return [
+            'Cache-Control' => 'private, no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Referrer-Policy' => 'no-referrer',
+        ];
     }
 }

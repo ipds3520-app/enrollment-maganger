@@ -54,6 +54,7 @@ return new class extends Migration
                 created_by INTEGER NOT NULL,
                 title VARCHAR(150) NOT NULL,
                 description TEXT NULL,
+                participant_count INTEGER NULL,
                 start_date DATE NOT NULL,
                 end_date DATE NOT NULL,
                 proposal_path VARCHAR(255) NULL,
@@ -69,6 +70,7 @@ return new class extends Migration
                 FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT,
                 FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE RESTRICT,
                 CHECK (status IN ('pending', 'approved', 'rejected')),
+                CHECK (participant_count IS NULL OR participant_count > 0),
                 CHECK (end_date > start_date),
                 CHECK (
                     (status = 'pending' AND processed_by IS NULL AND decided_at IS NULL AND reply_letter_path IS NULL)
@@ -91,6 +93,11 @@ return new class extends Migration
             $table->string('phone', 20)->nullable();
             $table->string('student_number', 30)->nullable();
             $table->string('school_major', 100)->nullable();
+            $table->string('nik', 16)->nullable();
+            $table->string('school_name', 150)->nullable();
+            $table->text('address')->nullable();
+            $table->date('birth_date')->nullable();
+            $table->string('gender', 20)->nullable();
             $table->timestamps();
             $table->unique(
                 ['internship_request_id', 'student_number'],
@@ -123,7 +130,7 @@ return new class extends Migration
         Schema::create('users_intern', function (Blueprint $table) {
             $table->id();
             $table->foreignId('applicant_id')->unique()->constrained('internship_applicants')->cascadeOnDelete();
-            $table->foreignId('registration_token_id')->unique()->constrained('registration_tokens')->cascadeOnDelete();
+            $table->foreignId('registration_token_id')->nullable()->unique()->constrained('registration_tokens')->cascadeOnDelete();
             $table->string('name', 100);
             $table->string('email', 150)->unique();
             $table->string('password', 255);
@@ -132,6 +139,50 @@ return new class extends Migration
             $table->rememberToken();
             $table->timestamps();
         });
+
+        DB::statement(<<<'SQL'
+            CREATE TABLE shared_registration_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                internship_request_id INTEGER NOT NULL UNIQUE,
+                token_hash VARCHAR(64) NOT NULL UNIQUE,
+                quota INTEGER NOT NULL,
+                used_count INTEGER NOT NULL DEFAULT 0,
+                status VARCHAR(20) NOT NULL DEFAULT 'active',
+                created_at DATETIME NULL,
+                updated_at DATETIME NULL,
+                FOREIGN KEY (internship_request_id) REFERENCES internship_requests(id) ON DELETE CASCADE,
+                CHECK (quota > 0 AND used_count >= 0 AND used_count <= quota),
+                CHECK (status IN ('active', 'exhausted', 'revoked')),
+                CHECK (
+                    (status = 'active' AND used_count < quota)
+                    OR (status = 'exhausted' AND used_count = quota)
+                    OR status = 'revoked'
+                )
+            )
+        SQL);
+
+        DB::statement(<<<'SQL'
+            CREATE TABLE shared_registration_claims (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                shared_registration_token_id INTEGER NOT NULL,
+                user_intern_id INTEGER NOT NULL UNIQUE,
+                internship_applicant_id INTEGER NOT NULL UNIQUE,
+                status VARCHAR(20) NOT NULL DEFAULT 'pending_profile',
+                claimed_at DATETIME NOT NULL,
+                completed_at DATETIME NULL,
+                created_at DATETIME NULL,
+                updated_at DATETIME NULL,
+                FOREIGN KEY (shared_registration_token_id) REFERENCES shared_registration_tokens(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_intern_id) REFERENCES users_intern(id) ON DELETE CASCADE,
+                FOREIGN KEY (internship_applicant_id) REFERENCES internship_applicants(id) ON DELETE CASCADE,
+                UNIQUE (shared_registration_token_id, user_intern_id),
+                CHECK (
+                    (status = 'pending_profile' AND completed_at IS NULL)
+                    OR (status = 'completed' AND completed_at IS NOT NULL)
+                )
+            )
+        SQL);
+        DB::statement('CREATE INDEX shared_claim_token_status_index ON shared_registration_claims (shared_registration_token_id, status)');
 
         DB::statement(<<<'SQL'
             CREATE TABLE intern_password_reset_requests (
@@ -176,6 +227,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('intern_password_reset_requests');
+        Schema::dropIfExists('shared_registration_claims');
+        Schema::dropIfExists('shared_registration_tokens');
         Schema::dropIfExists('users_intern');
         Schema::dropIfExists('registration_tokens');
         Schema::dropIfExists('internship_applicants');

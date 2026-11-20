@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -34,6 +35,12 @@ class UserIntern extends Authenticatable
     public function passwordResetRequests(): HasMany
     {
         return $this->hasMany(InternPasswordResetRequest::class, 'user_intern_id');
+    }
+
+    /** @return HasOne<SharedRegistrationClaim, $this> */
+    public function sharedRegistrationClaim(): HasOne
+    {
+        return $this->hasOne(SharedRegistrationClaim::class, 'user_intern_id');
     }
 
     /** @return Attribute<string, string> */

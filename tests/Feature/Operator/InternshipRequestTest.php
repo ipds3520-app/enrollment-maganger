@@ -3,14 +3,11 @@
 namespace Tests\Feature\Operator;
 
 use App\Models\Institution;
-use App\Models\InternshipApplicant;
 use App\Models\InternshipRequest;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
-use RuntimeException;
 use Tests\Support\UsesSqliteTestDatabase;
 use Tests\TestCase;
 
@@ -43,7 +40,7 @@ class InternshipRequestTest extends TestCase
             'description' => 'Permohonan praktik kerja lapangan.',
             'start_date' => '2027-01-10',
             'end_date' => '2027-03-10',
-            'applicants' => [$this->applicant()],
+            'participant_count' => 1,
             'proposal' => UploadedFile::fake()->create('proposal.pdf', 1, 'application/pdf'),
         ], $overrides);
     }
@@ -71,7 +68,7 @@ class InternshipRequestTest extends TestCase
         ]);
     }
 
-    public function test_operator_dapat_membuat_pengajuan_dengan_satu_calon(): void
+    public function test_operator_dapat_membuat_pengajuan_tanpa_membuat_record_peserta(): void
     {
         [$operator, $institution] = $this->operator();
 
@@ -88,32 +85,24 @@ class InternshipRequestTest extends TestCase
         $this->assertSame('pending', $request->status);
         $this->assertNull($request->processed_by);
         $this->assertNull($request->decided_at);
-        $this->assertCount(1, $request->applicants);
-        $this->assertSame('calon@example.test', $request->applicants->first()->email);
+        $this->assertSame(1, $request->participant_count);
+        $this->assertCount(0, $request->applicants);
         $this->assertMatchesRegularExpression('/^proposals\/'.$request->id.'\/[0-9a-f-]{36}\.pdf$/', $request->proposal_path);
         Storage::disk('local')->assertExists($request->proposal_path);
     }
 
-    public function test_operator_dapat_membuat_pengajuan_dengan_beberapa_calon(): void
+    public function test_operator_dapat_mengajukan_beberapa_slot_peserta_dengan_satu_jumlah(): void
     {
         [$operator] = $this->operator();
-        $applicants = [
-            $this->applicant(),
-            $this->applicant([
-                'name' => 'Calon Kedua',
-                'email' => 'calon.kedua@example.test',
-                'student_number' => 'SISWA-002',
-            ]),
-        ];
 
         $this->actingAs($operator)->post(
             route('operator.internship-requests.store'),
-            $this->payload(['applicants' => $applicants]),
+            $this->payload(['participant_count' => 4]),
         )->assertRedirect();
 
         $this->assertDatabaseCount('internship_requests', 1);
-        $this->assertDatabaseCount('internship_applicants', 2);
-        $this->assertDatabaseHas('internship_applicants', ['name' => 'Calon Kedua']);
+        $this->assertDatabaseHas('internship_requests', ['participant_count' => 4]);
+        $this->assertDatabaseCount('internship_applicants', 0);
     }
 
     public function test_field_kepemilikan_dan_keputusan_dari_input_ditolak(): void
@@ -198,14 +187,14 @@ class InternshipRequestTest extends TestCase
             ->assertDontSee(route('operator.internship-requests.proposal', $request));
     }
 
-    public function test_pengajuan_tanpa_calon_ditolak(): void
+    public function test_jumlah_peserta_harus_positif(): void
     {
         [$operator] = $this->operator();
 
         $this->actingAs($operator)
             ->from('/operator/internship-requests/create')
-            ->post(route('operator.internship-requests.store'), $this->payload(['applicants' => []]))
-            ->assertSessionHasErrors('applicants');
+            ->post(route('operator.internship-requests.store'), $this->payload(['participant_count' => 0]))
+            ->assertSessionHasErrors('participant_count');
 
         $this->assertDatabaseCount('internship_requests', 0);
     }
@@ -225,56 +214,29 @@ class InternshipRequestTest extends TestCase
         $this->assertDatabaseCount('internship_requests', 0);
     }
 
-    public function test_nomor_induk_duplikat_dalam_satu_pengajuan_ditolak(): void
+    public function test_jumlah_peserta_non_integer_ditolak(): void
     {
         [$operator] = $this->operator();
-        $applicants = [
-            $this->applicant(),
-            $this->applicant([
-                'name' => 'Calon Kedua',
-                'email' => 'calon.kedua@example.test',
-            ]),
-        ];
 
         $this->actingAs($operator)
             ->from('/operator/internship-requests/create')
-            ->post(route('operator.internship-requests.store'), $this->payload(['applicants' => $applicants]))
-            ->assertSessionHasErrors('applicants');
+            ->post(route('operator.internship-requests.store'), $this->payload(['participant_count' => '1.5']))
+            ->assertSessionHasErrors('participant_count');
 
         $this->assertDatabaseCount('internship_requests', 0);
     }
 
-    public function test_kegagalan_simpan_calon_membatalkan_seluruh_transaksi(): void
+    public function test_pengajuan_baru_menyimpan_jumlah_tanpa_membuat_calon_placeholder(): void
     {
         [$operator] = $this->operator();
-        Event::listen('eloquent.creating: '.InternshipApplicant::class, function (InternshipApplicant $applicant): void {
-            if ($applicant->name === 'Paksa Gagal') {
-                throw new RuntimeException('Simulasi kegagalan insert calon.');
-            }
-        });
 
-        $this->withoutExceptionHandling();
-        $failedAsExpected = false;
+        $this->actingAs($operator)->post(
+            route('operator.internship-requests.store'),
+            $this->payload(['participant_count' => 3]),
+        )->assertRedirect();
 
-        try {
-            $this->actingAs($operator)->post(route('operator.internship-requests.store'), $this->payload([
-                'applicants' => [
-                    $this->applicant(),
-                    $this->applicant([
-                        'name' => 'Paksa Gagal',
-                        'email' => 'gagal@example.test',
-                        'student_number' => 'SISWA-002',
-                    ]),
-                ],
-            ]));
-        } catch (RuntimeException $exception) {
-            $failedAsExpected = $exception->getMessage() === 'Simulasi kegagalan insert calon.';
-        }
-
-        $this->assertTrue($failedAsExpected, 'Insert calon seharusnya gagal di dalam transaksi.');
-        $this->assertDatabaseCount('internship_requests', 0);
         $this->assertDatabaseCount('internship_applicants', 0);
-        $this->assertSame([], Storage::disk('local')->allFiles('proposals'));
+        $this->assertDatabaseHas('internship_requests', ['participant_count' => 3]);
     }
 
     public function test_operator_hanya_melihat_pengajuan_institusinya(): void

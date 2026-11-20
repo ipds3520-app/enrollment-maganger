@@ -35,6 +35,7 @@ class ProcessInternshipRequest extends FormRequest
             'reply_letter_path' => ['prohibited'],
             'letter_number' => ['prohibited'],
             'admin_notes' => ['prohibited'],
+            'participant_count' => ['prohibited'],
         ];
     }
 

@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\InternPasswordResetRequestController;
 use App\Http\Controllers\Admin\InternshipRequestController as AdminInternshipRequestController;
 use App\Http\Controllers\Admin\ProcessInternshipRequestController;
 use App\Http\Controllers\Admin\RegistrationTokenController;
+use App\Http\Controllers\Admin\SharedRegistrationTokenController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\InternNewPasswordController;
 use App\Http\Controllers\Auth\InternPasswordResetLinkController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Intern\DashboardController;
+use App\Http\Controllers\Intern\InternProfileController;
 use App\Http\Controllers\Operator\DashboardController as OperatorDashboardController;
 use App\Http\Controllers\Operator\InternshipRequestController;
 use App\Http\Controllers\ProposalDownloadController;
@@ -102,6 +104,9 @@ Route::middleware(['auth:admin,operator,intern', 'role:admin,admin'])->group(fun
     Route::post('/admin/internship-requests/{internshipRequestId}/registration-tokens/{registrationTokenId}/revoke', [RegistrationTokenController::class, 'revoke'])
         ->whereNumber(['internshipRequestId', 'registrationTokenId'])
         ->name('admin.internship-requests.registration-tokens.revoke');
+    Route::post('/admin/internship-requests/{internshipRequestId}/shared-registration-token/revoke', [SharedRegistrationTokenController::class, 'revoke'])
+        ->whereNumber('internshipRequestId')
+        ->name('admin.internship-requests.shared-registration-token.revoke');
     Route::get('/admin/internship-requests/{internshipRequestId}/reply-letter', [ReplyLetterDownloadController::class, 'admin'])
         ->whereNumber('internshipRequestId')
         ->name('admin.internship-requests.reply-letter');
@@ -138,6 +143,11 @@ Route::middleware(['auth:operator,admin,intern', 'role:operator,operator'])->gro
 });
 
 Route::middleware('auth:intern')->group(function () {
+    Route::get('/intern/profile', [InternProfileController::class, 'show'])
+        ->name('intern.profile.show');
+    Route::put('/intern/profile', [InternProfileController::class, 'update'])
+        ->middleware('throttle:6,1')
+        ->name('intern.profile.update');
     Route::get('/intern/dashboard', [DashboardController::class, '__invoke'])
         ->name('intern.dashboard');
 });

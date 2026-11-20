@@ -41,7 +41,7 @@
                         <tr style="border-bottom:1px solid #eef1f6">
                             <td style="padding:12px 8px"><a href="{{ route('operator.internship-requests.show', $internshipRequest) }}">{{ $internshipRequest->title }}</a></td>
                             <td style="padding:12px 8px">{{ $internshipRequest->start_date->format('d/m/Y') }} – {{ $internshipRequest->end_date->format('d/m/Y') }}</td>
-                            <td style="padding:12px 8px">{{ $internshipRequest->applicants_count }}</td>
+                            <td style="padding:12px 8px">{{ $internshipRequest->participant_count ?? $internshipRequest->applicants_count }}</td>
                             <td style="padding:12px 8px">{{ $internshipRequest->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
                             <td style="padding:12px 8px"><span class="badge" style="text-transform:none;letter-spacing:0">{{ $statusLabel }}</span></td>
                         </tr>

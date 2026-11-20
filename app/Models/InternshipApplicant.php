@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['internship_request_id', 'name', 'email', 'phone', 'student_number', 'school_major'])]
+#[Fillable(['internship_request_id', 'name', 'email', 'phone', 'student_number', 'school_major', 'nik', 'school_name', 'address', 'birth_date', 'gender'])]
 class InternshipApplicant extends Model
 {
     /**
@@ -39,5 +39,17 @@ class InternshipApplicant extends Model
     public function internAccount(): HasOne
     {
         return $this->hasOne(UserIntern::class, 'applicant_id');
+    }
+
+    /** @return HasOne<SharedRegistrationClaim, $this> */
+    public function sharedRegistrationClaim(): HasOne
+    {
+        return $this->hasOne(SharedRegistrationClaim::class, 'internship_applicant_id');
+    }
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return ['birth_date' => 'date'];
     }
 }

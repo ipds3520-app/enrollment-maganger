@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\PasswordResetLinkRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Password;
 use Illuminate\View\View;
@@ -29,7 +30,14 @@ class PasswordResetLinkController extends Controller
         /** @var array{email: string} $credentials */
         $credentials = $request->only('email');
 
-        Password::broker('users')->sendResetLink($credentials);
+        $admin = User::query()
+            ->where('email', $credentials['email'])
+            ->where('role', 'admin')
+            ->first();
+
+        if ($admin !== null) {
+            Password::broker('users')->sendResetLink(['email' => $admin->email]);
+        }
 
         return back()->with(
             'status',

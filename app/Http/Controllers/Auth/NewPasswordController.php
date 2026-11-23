@@ -20,9 +20,17 @@ class NewPasswordController extends Controller
      */
     public function create(Request $request): View
     {
+        $email = mb_strtolower(trim((string) $request->query('email', '')));
+        $adminExists = $email !== '' && User::query()
+            ->where('email', $email)
+            ->where('role', 'admin')
+            ->exists();
+
+        abort_unless($adminExists, 404);
+
         return view('auth.reset-password', [
             'token' => (string) $request->route('token'),
-            'email' => (string) $request->query('email', ''),
+            'email' => $email,
         ]);
     }
 
@@ -37,6 +45,12 @@ class NewPasswordController extends Controller
         $status = Password::broker('users')->reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user, string $password): void {
+                if (! $user->isAdmin()) {
+                    throw ValidationException::withMessages([
+                        'email' => 'Tautan reset password tidak valid atau sudah kedaluwarsa.',
+                    ]);
+                }
+
                 // Cast 'hashed' pada model User meng-hash password otomatis.
                 $user->forceFill([
                     'password' => $password,

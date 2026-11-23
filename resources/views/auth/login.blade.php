@@ -24,7 +24,11 @@
             'operator' => 'operator.login.store',
             default => 'intern.login.store',
         };
-        $forgotRoute = $accountType === 'intern' ? 'intern.password.request' : 'password.request';
+        $forgotRoute = match ($accountType) {
+            'operator' => 'operator.password.request',
+            'intern' => 'intern.password.request',
+            default => 'password.request',
+        };
     @endphp
 
     <form method="POST" action="{{ route($loginRoute) }}">

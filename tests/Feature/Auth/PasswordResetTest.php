@@ -57,7 +57,7 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->operator()->create();
+        $user = User::factory()->admin()->create();
 
         $response = $this->from('/forgot-password')
             ->post('/forgot-password', ['email' => $user->email]);
@@ -85,10 +85,10 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->operator()->create(['email' => 'operator@example.test']);
+        $user = User::factory()->admin()->create(['email' => 'admin@example.test']);
 
         $this->from('/forgot-password')
-            ->post('/forgot-password', ['email' => 'OPERATOR@EXAMPLE.TEST'])
+            ->post('/forgot-password', ['email' => 'ADMIN@EXAMPLE.TEST'])
             ->assertSessionHas('status', self::GENERIC_STATUS);
 
         Notification::assertSentTo($user, ResetPassword::class);
@@ -98,7 +98,7 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->operator()->create();
+        $user = User::factory()->admin()->create();
 
         $this->post('/forgot-password', ['email' => $user->email]);
         $this->post('/forgot-password', ['email' => $user->email]);
@@ -108,7 +108,7 @@ class PasswordResetTest extends TestCase
 
     public function test_halaman_reset_dapat_ditampilkan_dengan_token_valid(): void
     {
-        $user = User::factory()->operator()->create();
+        $user = User::factory()->admin()->create();
         $token = $this->tokenFor($user);
 
         $this->get(route('password.reset', ['token' => $token, 'email' => $user->email]))
@@ -120,7 +120,7 @@ class PasswordResetTest extends TestCase
 
     public function test_password_dapat_direset_dengan_token_valid(): void
     {
-        $user = User::factory()->operator()->create(['password' => 'password-lama']);
+        $user = User::factory()->admin()->create(['password' => 'password-lama']);
         $token = $this->tokenFor($user);
 
         $response = $this->post('/reset-password', $this->resetPayload($user, $token));
@@ -136,7 +136,7 @@ class PasswordResetTest extends TestCase
 
     public function test_token_tidak_valid_ditolak(): void
     {
-        $user = User::factory()->operator()->create(['password' => 'password-lama']);
+        $user = User::factory()->admin()->create(['password' => 'password-lama']);
 
         $response = $this->from('/reset-password')
             ->post('/reset-password', $this->resetPayload($user, 'token-palsu'));
@@ -148,7 +148,7 @@ class PasswordResetTest extends TestCase
 
     public function test_token_kedaluwarsa_ditolak(): void
     {
-        $user = User::factory()->operator()->create(['password' => 'password-lama']);
+        $user = User::factory()->admin()->create(['password' => 'password-lama']);
         $token = $this->tokenFor($user);
 
         $this->travel(61)->minutes();
@@ -163,7 +163,7 @@ class PasswordResetTest extends TestCase
 
     public function test_token_tidak_dapat_digunakan_ulang(): void
     {
-        $user = User::factory()->operator()->create();
+        $user = User::factory()->admin()->create();
         $token = $this->tokenFor($user);
 
         $this->post('/reset-password', $this->resetPayload($user, $token))
@@ -177,8 +177,8 @@ class PasswordResetTest extends TestCase
 
     public function test_email_harus_cocok_dengan_token(): void
     {
-        $userA = User::factory()->operator()->create(['password' => 'password-lama']);
-        $userB = User::factory()->operator()->create();
+        $userA = User::factory()->admin()->create(['password' => 'password-lama']);
+        $userB = User::factory()->admin()->create();
         $token = $this->tokenFor($userA);
 
         $response = $this->from('/reset-password')
@@ -191,9 +191,36 @@ class PasswordResetTest extends TestCase
         $this->assertTrue(Hash::check('password-lama', $userA->fresh()->password));
     }
 
+    public function test_operator_tidak_dapat_memulai_reset_password_email_bawaan(): void
+    {
+        Notification::fake();
+        $operator = User::factory()->operator()->create();
+
+        $this->post('/forgot-password', ['email' => $operator->email])
+            ->assertSessionHas('status', self::GENERIC_STATUS);
+
+        Notification::assertNothingSent();
+        $this->assertDatabaseCount('password_reset_tokens', 0);
+    }
+
+    public function test_token_reset_email_lama_operator_tidak_dapat_mengubah_password(): void
+    {
+        $operator = User::factory()->operator()->create(['password' => 'password-lama']);
+        $token = $this->tokenFor($operator);
+
+        $this->get(route('password.reset', ['token' => $token, 'email' => $operator->email]))
+            ->assertNotFound();
+
+        $this->from('/reset-password')
+            ->post('/reset-password', $this->resetPayload($operator, $token))
+            ->assertSessionHasErrors('email');
+
+        $this->assertTrue(Hash::check('password-lama', $operator->fresh()->password));
+    }
+
     public function test_konfirmasi_password_baru_harus_cocok(): void
     {
-        $user = User::factory()->operator()->create();
+        $user = User::factory()->admin()->create();
         $token = $this->tokenFor($user);
 
         $response = $this->from('/reset-password')
@@ -208,7 +235,7 @@ class PasswordResetTest extends TestCase
 
     public function test_password_baru_minimal_delapan_karakter(): void
     {
-        $user = User::factory()->operator()->create();
+        $user = User::factory()->admin()->create();
         $token = $this->tokenFor($user);
 
         $response = $this->from('/reset-password')
@@ -224,7 +251,7 @@ class PasswordResetTest extends TestCase
 
     public function test_percobaan_reset_ketujuh_terkena_rate_limit(): void
     {
-        $user = User::factory()->operator()->create();
+        $user = User::factory()->admin()->create();
 
         $payload = $this->resetPayload($user, 'token-palsu');
 
@@ -270,7 +297,7 @@ class PasswordResetTest extends TestCase
 
     public function test_isi_email_reset_menggunakan_bahasa_indonesia(): void
     {
-        $user = User::factory()->operator()->create();
+        $user = User::factory()->admin()->create();
 
         $mail = (new ResetPassword('token-uji'))->toMail($user);
 

@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\InternNewPasswordController;
 use App\Http\Controllers\Auth\InternPasswordResetLinkController;
 use App\Http\Controllers\Auth\InternRegistrationController;
 use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\OperatorPasswordResetController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Intern\DashboardController;
@@ -62,6 +63,17 @@ Route::get('/intern/forgot-password', [InternPasswordResetLinkController::class,
 Route::post('/intern/forgot-password', [InternPasswordResetLinkController::class, 'store'])->middleware('throttle:intern-password-reset')->name('intern.password.email');
 Route::get('/intern/reset-password', [InternNewPasswordController::class, 'create'])->name('intern.password.reset');
 Route::post('/intern/reset-password', [InternNewPasswordController::class, 'store'])->middleware('throttle:6,1')->name('intern.password.update');
+
+Route::middleware('guest:operator')->group(function () {
+    Route::get('/operator/forgot-password', [OperatorPasswordResetController::class, 'create'])
+        ->name('operator.password.request');
+    Route::post('/operator/forgot-password', [OperatorPasswordResetController::class, 'start'])
+        ->name('operator.password.email');
+    Route::get('/operator/reset-password', [OperatorPasswordResetController::class, 'edit'])
+        ->name('operator.password.reset');
+    Route::post('/operator/reset-password', [OperatorPasswordResetController::class, 'update'])
+        ->name('operator.password.update');
+});
 
 Route::post('/admin/logout', [AuthenticatedSessionController::class, 'destroyAdmin'])->middleware('auth:admin')->name('admin.logout');
 Route::post('/operator/logout', [AuthenticatedSessionController::class, 'destroyOperator'])->middleware('auth:operator')->name('operator.logout');

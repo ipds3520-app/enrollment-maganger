@@ -9,6 +9,10 @@
             <p class="page-description">Data identitas yang tersimpan pada akun peserta magang.</p>
         </div>
         <div class="page-actions">
+            <a class="btn btn-primary" href="{{ route('intern.profile.edit') }}">
+                @include('layouts.partials.icon', ['name' => 'user'])
+                <span>Edit Data Pribadi</span>
+            </a>
             <a class="btn btn-secondary" href="{{ route('intern.dashboard') }}">
                 @include('layouts.partials.icon', ['name' => 'arrow-left'])
                 <span>Kembali ke dashboard</span>

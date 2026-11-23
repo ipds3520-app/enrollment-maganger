@@ -40,8 +40,8 @@
                 [
                     'label' => 'Manajemen',
                     'items' => [
-                        ['route' => 'admin.internship-requests.index', 'label' => 'Pengajuan magang', 'icon' => 'file-text', 'active' => 'admin.internship-requests.*'],
-                        ['route' => 'admin.intern-password-reset-requests.index', 'label' => 'Reset password peserta', 'icon' => 'key', 'active' => 'admin.intern-password-reset-requests.*'],
+                        ['route' => 'admin.internship-requests.index', 'label' => 'Pengajuan Magang', 'icon' => 'file-text', 'active' => 'admin.internship-requests.*'],
+                        ['route' => 'admin.intern-password-reset-requests.index', 'label' => 'Reset Password Peserta', 'icon' => 'key', 'active' => 'admin.intern-password-reset-requests.*'],
                     ],
                 ],
             ],
@@ -55,8 +55,8 @@
                 [
                     'label' => 'Pengajuan',
                     'items' => [
-                        ['route' => 'operator.internship-requests.index', 'label' => 'Daftar pengajuan', 'icon' => 'file-text', 'active' => ['operator.internship-requests.index', 'operator.internship-requests.show']],
-                        ['route' => 'operator.internship-requests.create', 'label' => 'Buat pengajuan', 'icon' => 'plus', 'active' => 'operator.internship-requests.create'],
+                        ['route' => 'operator.internship-requests.index', 'label' => 'Daftar Pengajuan', 'icon' => 'file-text', 'active' => ['operator.internship-requests.index', 'operator.internship-requests.show']],
+                        ['route' => 'operator.internship-requests.create', 'label' => 'Buat Pengajuan', 'icon' => 'plus', 'active' => 'operator.internship-requests.create'],
                     ],
                 ],
             ],
@@ -70,7 +70,7 @@
                 [
                     'label' => 'Akun',
                     'items' => [
-                        ['route' => 'intern.profile.show', 'label' => 'Data pribadi', 'icon' => 'user', 'active' => 'intern.profile.*'],
+                        ['route' => 'intern.profile.show', 'label' => 'Data Pribadi', 'icon' => 'user', 'active' => 'intern.profile.*'],
                     ],
                 ],
             ],

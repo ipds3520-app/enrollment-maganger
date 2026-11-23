@@ -135,6 +135,11 @@ Route::middleware(['auth:operator,admin,intern', 'role:operator,operator'])->gro
 Route::middleware('auth:intern')->group(function () {
     Route::get('/intern/profile', [InternProfileController::class, 'show'])
         ->name('intern.profile.show');
+    Route::get('/intern/profile/edit', [InternProfileController::class, 'edit'])
+        ->name('intern.profile.edit');
+    Route::put('/intern/profile/edit', [InternProfileController::class, 'updateDetails'])
+        ->middleware('throttle:6,1')
+        ->name('intern.profile.update-details');
     Route::put('/intern/profile', [InternProfileController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('intern.profile.update');

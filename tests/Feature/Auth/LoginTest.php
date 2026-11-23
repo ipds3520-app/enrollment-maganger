@@ -20,7 +20,10 @@ class LoginTest extends TestCase
 
     public function test_login_selector_dan_halaman_login_per_role_dapat_ditampilkan(): void
     {
-        $this->get('/login')->assertOk()->assertSee('Login Admin')->assertSee('Login Operator')->assertSee('Login Peserta Magang');
+        $selector = $this->get('/login')->assertOk()
+            ->assertSee('Operator')
+            ->assertSee('Peserta Magang');
+        $selector->assertDontSee(route('admin.login'));
         $this->get(route('admin.login'))->assertOk()->assertSee('Masuk sebagai Admin');
         $this->get(route('operator.login'))->assertOk()->assertSee('Masuk sebagai Operator');
         $this->get(route('intern.login'))->assertOk()->assertSee('Masuk sebagai Peserta Magang');

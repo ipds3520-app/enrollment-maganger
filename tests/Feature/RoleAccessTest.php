@@ -84,22 +84,24 @@ class RoleAccessTest extends TestCase
         $this->actingAs($user, 'admin')->get('/')->assertForbidden();
     }
 
-    public function test_root_mengarahkan_admin_ke_dashboard_admin(): void
+    public function test_root_menampilkan_landing_page_ketika_admin_login(): void
     {
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)
             ->get('/')
-            ->assertRedirect(route('admin.dashboard'));
+            ->assertOk()
+            ->assertViewIs('welcome');
     }
 
-    public function test_root_mengarahkan_operator_ke_dashboard_operator(): void
+    public function test_root_menampilkan_landing_page_ketika_operator_login(): void
     {
         $operator = User::factory()->operator()->create();
 
         $this->actingAs($operator)
             ->get('/')
-            ->assertRedirect(route('operator.dashboard'));
+            ->assertOk()
+            ->assertViewIs('welcome');
     }
 
     public function test_root_menampilkan_landing_page_untuk_tamu(): void
@@ -107,7 +109,7 @@ class RoleAccessTest extends TestCase
         $this->get('/')->assertOk()->assertViewIs('welcome');
     }
 
-    public function test_root_mengarahkan_intern_ke_dashboard_intern(): void
+    public function test_root_menampilkan_landing_page_ketika_intern_login(): void
     {
         $institution = Institution::factory()->create();
         $operator = User::factory()->operator($institution)->create();
@@ -132,17 +134,19 @@ class RoleAccessTest extends TestCase
 
         $this->actingAs($intern, 'intern')
             ->get('/')
-            ->assertRedirect(route('intern.dashboard'));
+            ->assertOk()
+            ->assertViewIs('welcome');
     }
 
-    public function test_root_mengarahkan_ke_pemilih_jika_beberapa_guard_aktif(): void
+    public function test_root_menampilkan_landing_page_jika_beberapa_guard_aktif(): void
     {
         $admin = User::factory()->admin()->create();
         $operator = User::factory()->operator()->create();
 
         $this->actingAs($admin, 'admin')->actingAs($operator, 'operator')
             ->get('/')
-            ->assertRedirect(route('login'));
+            ->assertOk()
+            ->assertViewIs('welcome');
     }
 
     public function test_role_tidak_dapat_diubah_melalui_mass_assignment(): void

@@ -9,6 +9,10 @@
             <p class="page-description">Ringkasan pengajuan magang, akun operator, dan peserta dari seluruh institusi.</p>
         </div>
         <div class="page-actions">
+            <a class="btn btn-secondary" href="{{ route('admin.shared-registration-tokens.index') }}">
+                @include('layouts.partials.icon', ['name' => 'key'])
+                <span>Pantau token</span>
+            </a>
             <a class="btn btn-primary" href="{{ route('admin.internship-requests.index') }}">
                 @include('layouts.partials.icon', ['name' => 'file-text'])
                 <span>Tinjau pengajuan</span>

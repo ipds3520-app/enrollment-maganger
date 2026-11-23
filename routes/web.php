@@ -75,6 +75,8 @@ Route::post('/intern/register', [InternRegistrationController::class, 'store'])
 
 Route::middleware(['auth:admin,operator,intern', 'role:admin,admin'])->group(function () {
     Route::get('/admin/dashboard', AdminDashboardController::class)->name('admin.dashboard');
+    Route::get('/admin/shared-registration-tokens', [SharedRegistrationTokenController::class, 'index'])
+        ->name('admin.shared-registration-tokens.index');
     Route::get('/admin/internship-requests', [AdminInternshipRequestController::class, 'index'])
         ->name('admin.internship-requests.index');
     Route::get('/admin/internship-requests/{internshipRequestId}', [AdminInternshipRequestController::class, 'show'])
@@ -92,6 +94,9 @@ Route::middleware(['auth:admin,operator,intern', 'role:admin,admin'])->group(fun
     Route::post('/admin/internship-requests/{internshipRequestId}/shared-registration-token/revoke', [SharedRegistrationTokenController::class, 'revoke'])
         ->whereNumber('internshipRequestId')
         ->name('admin.internship-requests.shared-registration-token.revoke');
+    Route::put('/admin/internship-requests/{internshipRequestId}/shared-registration-token/quota', [SharedRegistrationTokenController::class, 'updateQuota'])
+        ->whereNumber('internshipRequestId')
+        ->name('admin.internship-requests.shared-registration-token.quota');
     Route::get('/admin/internship-requests/{internshipRequestId}/reply-letter', [ReplyLetterDownloadController::class, 'admin'])
         ->whereNumber('internshipRequestId')
         ->name('admin.internship-requests.reply-letter');

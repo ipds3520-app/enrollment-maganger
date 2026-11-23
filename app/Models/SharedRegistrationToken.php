@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['internship_request_id', 'token_hash', 'quota', 'used_count', 'status'])]
-#[Hidden(['token_hash'])]
+#[Hidden(['token_hash', 'token_encrypted'])]
 class SharedRegistrationToken extends Model
 {
     /** @return BelongsTo<InternshipRequest, $this> */
@@ -24,9 +24,20 @@ class SharedRegistrationToken extends Model
         return $this->hasMany(SharedRegistrationClaim::class);
     }
 
+    /** @return BelongsTo<User, $this> */
+    public function quotaUpdater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'quota_updated_by');
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['quota' => 'integer', 'used_count' => 'integer'];
+        return [
+            'token_encrypted' => 'encrypted',
+            'quota' => 'integer',
+            'used_count' => 'integer',
+            'quota_updated_at' => 'datetime',
+        ];
     }
 }

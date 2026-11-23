@@ -20,13 +20,15 @@ class IssueSharedRegistrationToken
         }
 
         $plaintext = bin2hex(random_bytes(32));
-        $token = SharedRegistrationToken::create([
+        $token = new SharedRegistrationToken([
             'internship_request_id' => $request->getKey(),
             'token_hash' => hash('sha256', $plaintext),
             'quota' => $quota,
             'used_count' => 0,
             'status' => 'active',
         ]);
+        $token->token_encrypted = $plaintext;
+        $token->save();
 
         return ['token' => $token, 'plaintext' => $plaintext];
     }

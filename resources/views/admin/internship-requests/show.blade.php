@@ -263,6 +263,10 @@
 
                 <div class="detail-grid">
                     <div class="detail-item">
+                        <p class="detail-label">Referensi token</p>
+                        <p class="detail-value">#{{ $sharedToken->getKey() }}</p>
+                    </div>
+                    <div class="detail-item">
                         <p class="detail-label">Kuota</p>
                         <p class="detail-value">{{ $sharedToken->quota }} peserta</p>
                     </div>
@@ -274,9 +278,49 @@
                         <p class="detail-label">Sisa kuota</p>
                         <p class="detail-value">{{ max(0, $sharedToken->quota - $sharedToken->used_count) }}</p>
                     </div>
+                    <div class="detail-item">
+                        <p class="detail-label">Diterbitkan</p>
+                        <p class="detail-value">{{ $sharedToken->created_at?->format('d/m/Y H:i') ?? '—' }}</p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="detail-label">Kuota terakhir diubah oleh</p>
+                        <p class="detail-value">{{ $sharedToken->quotaUpdater?->name ?? 'Belum pernah diubah' }}</p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="detail-label">Waktu perubahan kuota</p>
+                        <p class="detail-value">{{ $sharedToken->quota_updated_at?->format('d/m/Y H:i') ?? '—' }}</p>
+                    </div>
                 </div>
 
                 <p class="card-note">Plaintext token tidak dapat dilihat kembali. Operator menerima token dari Admin setelah approval.</p>
+
+                <form method="POST" action="{{ route('admin.internship-requests.shared-registration-token.quota', $internshipRequest) }}" class="form-grid form-grid--inline">
+                    @csrf
+                    @method('PUT')
+                    <div class="field">
+                        <label for="quota">Ubah kuota peserta</label>
+                        <input
+                            class="input"
+                            id="quota"
+                            name="quota"
+                            type="number"
+                            min="{{ max(1, $sharedToken->used_count) }}"
+                            max="2147483647"
+                            step="1"
+                            value="{{ old('quota', $sharedToken->quota) }}"
+                            required
+                            @error('quota') aria-invalid="true" @enderror
+                        >
+                        @error('quota')
+                            <span class="field-error">{{ $message }}</span>
+                        @enderror
+                        <span class="field-hint">Minimal {{ $sharedToken->used_count }} sesuai jumlah profil yang telah selesai.</span>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-secondary">Simpan kuota</button>
+                        <a class="btn btn-ghost" href="{{ route('admin.shared-registration-tokens.index') }}">Pantau semua token</a>
+                    </div>
+                </form>
 
                 @if ($sharedToken->status === 'active')
                     <form method="POST" action="{{ route('admin.internship-requests.shared-registration-token.revoke', $internshipRequest) }}">

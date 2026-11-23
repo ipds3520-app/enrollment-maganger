@@ -113,7 +113,34 @@
                     </div>
                 </div>
 
-                <p class="card-note">Token dibagikan oleh Admin setelah persetujuan. Token asli tidak ditampilkan pada halaman ini.</p>
+                @if ($sharedToken->token_encrypted !== null)
+                    <div class="field">
+                        <label for="shared-registration-token">Token pendaftaran peserta</label>
+                        <div class="token-box">
+                            <input
+                                id="shared-registration-token"
+                                class="input mono"
+                                type="text"
+                                readonly
+                                value="{{ $sharedToken->token_encrypted }}"
+                                autocomplete="off"
+                                spellcheck="false"
+                            >
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                data-copy-target="#shared-registration-token"
+                                data-copy-done="Token tersalin"
+                            >
+                                @include('layouts.partials.icon', ['name' => 'copy'])
+                                <span data-copy-label aria-live="polite">Salin token</span>
+                            </button>
+                        </div>
+                        <span class="field-hint">Bagikan token hanya kepada calon peserta dari institusi Anda.</span>
+                    </div>
+                @else
+                    <p class="card-note">Token ini diterbitkan sebelum pembaruan sistem. Token tidak dapat ditampilkan kembali. Silakan gunakan informasi token yang sebelumnya telah disimpan.</p>
+                @endif
             </section>
         @endif
 

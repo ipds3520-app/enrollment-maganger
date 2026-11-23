@@ -867,6 +867,24 @@ svg {
     grid-column: span 2;
 }
 
+.operator-registration-guide {
+    margin-bottom: 16px;
+}
+
+.operator-guide-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding-left: 22px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.operator-guide-list a {
+    color: var(--primary);
+    font-weight: 600;
+}
+
 .stat-card {
     display: flex;
     flex-direction: column;

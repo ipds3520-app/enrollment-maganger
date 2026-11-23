@@ -23,6 +23,12 @@
             default => 'Peserta Magang',
         };
 
+        $roleBadgeClass = match ($dashboardArea) {
+            'admin' => 'profile-menu-role--admin',
+            'operator' => 'profile-menu-role--operator',
+            default => 'profile-menu-role--intern',
+        };
+
         $navGroups = match ($dashboardArea) {
             'admin' => [
                 [
@@ -174,6 +180,7 @@
                                 <div class="profile-menu-head">
                                     <strong>{{ $currentUser->name }}</strong>
                                     <span>{{ $currentUser->email }}</span>
+                                    <span class="profile-menu-role {{ $roleBadgeClass }}">{{ $roleLabel }}</span>
                                 </div>
                                 <form method="POST" action="{{ route($logoutRoute) }}">
                                     @csrf

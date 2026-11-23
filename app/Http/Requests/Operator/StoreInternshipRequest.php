@@ -20,7 +20,7 @@ class StoreInternshipRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string'],
-            'start_date' => ['required', 'date_format:Y-m-d'],
+            'start_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'end_date' => ['required', 'date_format:Y-m-d', 'after:start_date'],
             'participant_count' => ['required', 'integer', 'min:1', 'max:2147483647'],
             'proposal' => ['prohibited'],
@@ -47,6 +47,7 @@ class StoreInternshipRequest extends FormRequest
             'title.max' => 'Judul pengajuan maksimal 150 karakter.',
             'start_date.required' => 'Tanggal mulai wajib diisi.',
             'start_date.date_format' => 'Format tanggal mulai tidak valid.',
+            'start_date.after_or_equal' => 'Tanggal mulai tidak boleh sebelum hari ini.',
             'end_date.required' => 'Tanggal selesai wajib diisi.',
             'end_date.date_format' => 'Format tanggal selesai tidak valid.',
             'end_date.after' => 'Tanggal selesai harus setelah tanggal mulai.',

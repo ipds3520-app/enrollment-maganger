@@ -49,6 +49,7 @@
                             id="title"
                             name="title"
                             value="{{ old('title') }}"
+                            placeholder="Contoh: Permohonan Magang Tahun Ajaran 202X/202X"
                             maxlength="150"
                             required
                             @error('title') aria-invalid="true" @enderror
@@ -65,6 +66,7 @@
                             type="date"
                             name="start_date"
                             value="{{ old('start_date') }}"
+                            min="{{ now()->toDateString() }}"
                             required
                             @error('start_date') aria-invalid="true" @enderror
                         >
@@ -80,6 +82,7 @@
                             type="date"
                             name="end_date"
                             value="{{ old('end_date') }}"
+                            min="{{ now()->toDateString() }}"
                             required
                             @error('end_date') aria-invalid="true" @enderror
                         >

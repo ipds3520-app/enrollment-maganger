@@ -16,40 +16,49 @@
         </div>
     </div>
 
-    <div class="stat-grid">
-        <div class="stat-card">
-            <span class="stat-label">Total pengajuan</span>
-            <span class="stat-value">{{ number_format($stats['total']) }}</span>
-            <span class="stat-hint">Seluruh institusi</span>
+    <section class="dashboard-stat-section" aria-labelledby="request-stats-heading">
+        <h2 class="dashboard-stat-heading" id="request-stats-heading">Ringkasan pengajuan</h2>
+        <div class="stat-grid stat-grid--requests">
+            <div class="stat-card">
+                <span class="stat-label">Total pengajuan</span>
+                <span class="stat-value">{{ number_format($stats['total']) }}</span>
+                <span class="stat-hint">Seluruh institusi</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Menunggu</span>
+                <span class="stat-value">{{ number_format($stats['pending']) }}</span>
+                <span class="stat-hint">Perlu ditinjau</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Disetujui</span>
+                <span class="stat-value">{{ number_format($stats['approved']) }}</span>
+                <span class="stat-hint">Pengajuan diterima</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Ditolak</span>
+                <span class="stat-value">{{ number_format($stats['rejected']) }}</span>
+                <span class="stat-hint">Pengajuan ditolak</span>
+            </div>
         </div>
-        <div class="stat-card">
-            <span class="stat-label">Menunggu</span>
-            <span class="stat-value">{{ number_format($stats['pending']) }}</span>
-            <span class="stat-hint">Perlu ditinjau</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">Disetujui</span>
-            <span class="stat-value">{{ number_format($stats['approved']) }}</span>
-            <span class="stat-hint">Pengajuan diterima</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">Ditolak</span>
-            <span class="stat-value">{{ number_format($stats['rejected']) }}</span>
-            <span class="stat-hint">Pengajuan ditolak</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">Total operator</span>
-            <span class="stat-value">{{ number_format($stats['operators']) }}</span>
-            <span class="stat-hint">Akun institusi</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">Total peserta magang</span>
-            <span class="stat-value">{{ number_format($stats['interns']) }}</span>
-            <span class="stat-hint">Akun peserta terdaftar</span>
-        </div>
-    </div>
+    </section>
 
-    <div class="dashboard-grid">
+    <section class="dashboard-stat-section dashboard-stat-section--accounts" aria-labelledby="account-stats-heading">
+        <h2 class="dashboard-stat-heading" id="account-stats-heading">Akun terdaftar</h2>
+        <div class="stat-grid stat-grid--accounts">
+            <div class="stat-card">
+                <span class="stat-label">Total operator</span>
+                <span class="stat-value">{{ number_format($stats['operators']) }}</span>
+                <span class="stat-hint">Akun institusi</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Total peserta magang</span>
+                <span class="stat-value">{{ number_format($stats['interns']) }}</span>
+                <span class="stat-hint">Akun peserta terdaftar</span>
+            </div>
+        </div>
+    </section>
+
+    <div class="dashboard-grid dashboard-grid--full">
         <section class="card">
             <div class="section-header">
                 <div>
@@ -103,53 +112,6 @@
                     </table>
                 </div>
             @endif
-        </section>
-
-        <section class="card">
-            <div class="section-header">
-                <div>
-                    <h2 class="section-heading">Akses cepat</h2>
-                    <p class="section-subheading">Tugas yang tersedia untuk admin.</p>
-                </div>
-            </div>
-
-            <div class="quick-actions">
-                <a class="quick-action" href="{{ route('admin.internship-requests.index') }}">
-                    @include('layouts.partials.icon', ['name' => 'file-text'])
-                    <span>
-                        <span class="quick-action-title">Pengajuan magang</span>
-                        <span class="quick-action-text">Tinjau pengajuan dan tetapkan keputusan.</span>
-                    </span>
-                </a>
-                <a class="quick-action" href="{{ route('admin.intern-password-reset-requests.index') }}">
-                    @include('layouts.partials.icon', ['name' => 'key'])
-                    <span>
-                        <span class="quick-action-title">Reset password peserta</span>
-                        <span class="quick-action-text">
-                            {{ $stats['pending_password_resets'] > 0
-                                ? $stats['pending_password_resets'].' permintaan menunggu pemeriksaan.'
-                                : 'Tidak ada permintaan yang menunggu.' }}
-                        </span>
-                    </span>
-                </a>
-            </div>
-
-            <hr class="divider">
-
-            <dl class="data-list">
-                <div class="data-row">
-                    <dt>Nama akun</dt>
-                    <dd>{{ $user->name }}</dd>
-                </div>
-                <div class="data-row">
-                    <dt>Email</dt>
-                    <dd>{{ $user->email }}</dd>
-                </div>
-                <div class="data-row">
-                    <dt>Peran</dt>
-                    <dd>Admin</dd>
-                </div>
-            </dl>
         </section>
     </div>
 @endsection

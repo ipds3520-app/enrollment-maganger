@@ -110,31 +110,6 @@
             <section class="card">
                 <div class="section-header">
                     <div>
-                        <h2 class="section-heading">Aksi cepat</h2>
-                        <p class="section-subheading">Langkah yang sering digunakan.</p>
-                    </div>
-                </div>
-                <div class="quick-actions">
-                    <a class="quick-action" href="{{ route('operator.internship-requests.create') }}">
-                        @include('layouts.partials.icon', ['name' => 'plus'])
-                        <span>
-                            <span class="quick-action-title">Buat pengajuan baru</span>
-                            <span class="quick-action-text">Ajukan permohonan magang beserta proposal.</span>
-                        </span>
-                    </a>
-                    <a class="quick-action" href="{{ route('operator.internship-requests.index') }}">
-                        @include('layouts.partials.icon', ['name' => 'file-text'])
-                        <span>
-                            <span class="quick-action-title">Daftar pengajuan</span>
-                            <span class="quick-action-text">Pantau status dan peserta setiap pengajuan.</span>
-                        </span>
-                    </a>
-                </div>
-            </section>
-
-            <section class="card">
-                <div class="section-header">
-                    <div>
                         <h2 class="section-heading">Institusi</h2>
                         <p class="section-subheading">Data institusi akun Anda.</p>
                     </div>

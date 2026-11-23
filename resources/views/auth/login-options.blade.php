@@ -6,17 +6,6 @@
 
 @section('content')
     <div class="account-list">
-        <a class="account-option" href="{{ route('admin.login') }}">
-            <span class="account-option-icon">
-                @include('layouts.partials.icon', ['name' => 'shield-check'])
-            </span>
-            <span class="account-option-body">
-                <span class="account-option-title">Admin</span>
-                <span class="account-option-text">Verifikasi pengajuan dan kelola akun institusi.</span>
-            </span>
-            @include('layouts.partials.icon', ['name' => 'chevron-right', 'class' => 'icon account-chevron'])
-        </a>
-
         <a class="account-option" href="{{ route('operator.login') }}">
             <span class="account-option-icon">
                 @include('layouts.partials.icon', ['name' => 'building'])

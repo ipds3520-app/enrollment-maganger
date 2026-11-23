@@ -25,31 +25,16 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     $admin = Auth::guard('admin')->user();
     $operator = Auth::guard('operator')->user();
-    $intern = Auth::guard('intern')->user();
 
-    if ($admin !== null && $admin->isAdmin() === false) {
+    if ($admin !== null && ! $admin->isAdmin()) {
         abort(403);
     }
 
-    if ($operator !== null && $operator->isOperator() === false) {
+    if ($operator !== null && ! $operator->isOperator()) {
         abort(403);
     }
 
-    $signedIn = collect([
-        $admin !== null ? 'admin.dashboard' : null,
-        $operator !== null ? 'operator.dashboard' : null,
-        $intern !== null ? 'intern.dashboard' : null,
-    ])->filter();
-
-    if ($signedIn->count() === 1) {
-        return redirect()->route($signedIn->first());
-    }
-
-    if ($signedIn->isNotEmpty()) {
-        return redirect()->route('login');
-    }
-
-    return redirect()->route('login');
+    return view('welcome');
 })->name('home');
 
 Route::middleware('guest:operator')->group(function () {

@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Institution;
+use App\Models\InternshipRequest;
 use App\Models\User;
+use App\Models\UserIntern;
 use Tests\Support\UsesSqliteTestDatabase;
 use Tests\TestCase;
 
@@ -100,9 +102,37 @@ class RoleAccessTest extends TestCase
             ->assertRedirect(route('operator.dashboard'));
     }
 
-    public function test_root_mengarahkan_tamu_ke_halaman_login(): void
+    public function test_root_menampilkan_landing_page_untuk_tamu(): void
     {
-        $this->get('/')->assertRedirect(route('login'));
+        $this->get('/')->assertOk()->assertViewIs('welcome');
+    }
+
+    public function test_root_mengarahkan_intern_ke_dashboard_intern(): void
+    {
+        $institution = Institution::factory()->create();
+        $operator = User::factory()->operator($institution)->create();
+        $request = InternshipRequest::query()->create([
+            'institution_id' => $institution->id,
+            'created_by' => $operator->id,
+            'title' => 'Permohonan Uji',
+            'start_date' => '2027-01-10',
+            'end_date' => '2027-03-10',
+        ]);
+        $applicant = $request->applicants()->create([
+            'name' => 'Peserta Uji',
+            'email' => 'peserta.uji@example.test',
+        ]);
+        $intern = UserIntern::create([
+            'applicant_id' => $applicant->id,
+            'registration_token_id' => null,
+            'name' => $applicant->name,
+            'email' => $applicant->email,
+            'password' => 'password',
+        ]);
+
+        $this->actingAs($intern, 'intern')
+            ->get('/')
+            ->assertRedirect(route('intern.dashboard'));
     }
 
     public function test_root_mengarahkan_ke_pemilih_jika_beberapa_guard_aktif(): void

@@ -5,7 +5,6 @@ namespace Tests\Feature\Operator;
 use App\Models\Institution;
 use App\Models\InternshipRequest;
 use App\Models\User;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\UsesSqliteTestDatabase;
@@ -41,7 +40,7 @@ class InternshipRequestTest extends TestCase
             'start_date' => '2027-01-10',
             'end_date' => '2027-03-10',
             'participant_count' => 1,
-            'proposal' => UploadedFile::fake()->create('proposal.pdf', 1, 'application/pdf'),
+            'proposal_url' => 'https://drive.google.com/file/d/drive-file-id/view?usp=sharing',
         ], $overrides);
     }
 
@@ -87,8 +86,8 @@ class InternshipRequestTest extends TestCase
         $this->assertNull($request->decided_at);
         $this->assertSame(1, $request->participant_count);
         $this->assertCount(0, $request->applicants);
-        $this->assertMatchesRegularExpression('/^proposals\/'.$request->id.'\/[0-9a-f-]{36}\.pdf$/', $request->proposal_path);
-        Storage::disk('local')->assertExists($request->proposal_path);
+        $this->assertSame('https://drive.google.com/file/d/drive-file-id/view?usp=sharing', $request->proposal_path);
+        $this->assertSame([], Storage::disk('local')->allFiles('proposals'));
     }
 
     public function test_operator_dapat_mengajukan_beberapa_slot_peserta_dengan_satu_jumlah(): void
@@ -142,34 +141,34 @@ class InternshipRequestTest extends TestCase
         $this->assertDatabaseCount('internship_applicants', 0);
     }
 
-    public function test_proposal_wajib_diunggah_dan_validasi_menolak_format_dan_mime_yang_salah(): void
+    public function test_link_proposal_wajib_dan_hanya_menerima_https_google_drive(): void
     {
         [$operator] = $this->operator();
 
         $this->actingAs($operator)->from('/operator/internship-requests/create')
-            ->post(route('operator.internship-requests.store'), $this->payload(['proposal' => null]))
-            ->assertSessionHasErrors('proposal');
+            ->post(route('operator.internship-requests.store'), $this->payload(['proposal_url' => null]))
+            ->assertSessionHasErrors('proposal_url');
 
         $this->actingAs($operator)->from('/operator/internship-requests/create')
             ->post(route('operator.internship-requests.store'), $this->payload([
-                'proposal' => UploadedFile::fake()->create('proposal.txt', 1, 'text/plain'),
-            ]))->assertSessionHasErrors('proposal');
+                'proposal_url' => 'https://example.com/proposal.pdf',
+            ]))->assertSessionHasErrors('proposal_url');
 
         $this->actingAs($operator)->from('/operator/internship-requests/create')
             ->post(route('operator.internship-requests.store'), $this->payload([
-                'proposal' => UploadedFile::fake()->create('proposal.pdf', 1, 'text/plain'),
-            ]))->assertSessionHasErrors('proposal');
+                'proposal_url' => 'http://drive.google.com/file/d/file-id/view',
+            ]))->assertSessionHasErrors('proposal_url');
 
         $this->assertDatabaseCount('internship_requests', 0);
     }
 
-    public function test_proposal_di_atas_10_mb_ditolak(): void
+    public function test_upload_file_proposal_tidak_diterima_lagi(): void
     {
         [$operator] = $this->operator();
 
         $this->actingAs($operator)->from('/operator/internship-requests/create')
             ->post(route('operator.internship-requests.store'), $this->payload([
-                'proposal' => UploadedFile::fake()->create('proposal.pdf', 10241, 'application/pdf'),
+                'proposal' => 'proposal.pdf',
             ]))->assertSessionHasErrors('proposal');
 
         $this->assertDatabaseCount('internship_requests', 0);
@@ -185,6 +184,20 @@ class InternshipRequestTest extends TestCase
             ->assertOk()
             ->assertSee('Proposal belum tersedia untuk pengajuan ini.')
             ->assertDontSee(route('operator.internship-requests.proposal', $request));
+    }
+
+    public function test_operator_dapat_membuka_link_proposal_miliknya(): void
+    {
+        [$operator, $institution] = $this->operator();
+        $request = $this->existingRequest($operator, $institution, 'Pengajuan dengan proposal Drive');
+        $request->proposal_path = 'https://drive.google.com/file/d/proposal-id/view';
+        $request->save();
+
+        $this->actingAs($operator)
+            ->get(route('operator.internship-requests.show', $request))
+            ->assertOk()
+            ->assertSee('Lihat Proposal')
+            ->assertSee('target="_blank" rel="noopener noreferrer"', false);
     }
 
     public function test_jumlah_peserta_harus_positif(): void

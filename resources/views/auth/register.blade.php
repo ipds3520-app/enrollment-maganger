@@ -45,14 +45,14 @@
                     @error('institution_type') aria-invalid="true" @enderror
                 >
                     <option value="">Pilih jenis institusi</option>
-                    @foreach (['smk' => 'SMK', 'sma' => 'SMA', 'university' => 'Perguruan Tinggi', 'other' => 'Lainnya'] as $value => $label)
+                    @foreach (['sma' => 'SMA/Sederajat', 'university' => 'Perguruan Tinggi', 'other' => 'Lainnya'] as $value => $label)
                         <option value="{{ $value }}" @selected(old('institution_type') === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="institution_address">Alamat Institusi (opsional)</label>
+                <label for="institution_address">Alamat Institusi (Wajib)</label>
                 <textarea
                     id="institution_address"
                     name="institution_address"

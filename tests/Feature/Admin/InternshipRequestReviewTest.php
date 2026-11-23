@@ -6,7 +6,6 @@ use App\Models\Institution;
 use App\Models\InternshipRequest;
 use App\Models\RegistrationToken;
 use App\Models\User;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
@@ -62,9 +61,9 @@ class InternshipRequestReviewTest extends TestCase
         return $request;
     }
 
-    private function pdfFile(string $name = 'surat-tu.pdf'): UploadedFile
+    private function driveUrl(): string
     {
-        return UploadedFile::fake()->create($name, 1, 'application/pdf');
+        return 'https://drive.google.com/file/d/drive-file-id/view?usp=sharing';
     }
 
     public function test_admin_melihat_pengajuan_dari_seluruh_institusi(): void
@@ -105,6 +104,8 @@ class InternshipRequestReviewTest extends TestCase
     {
         [$operator, $institution] = $this->operator('SMK Detail');
         $request = $this->pendingRequest($operator, $institution);
+        $request->proposal_path = $this->driveUrl();
+        $request->save();
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)
@@ -112,10 +113,30 @@ class InternshipRequestReviewTest extends TestCase
             ->assertOk()
             ->assertSee('SMK Detail')
             ->assertSee($operator->email)
-            ->assertSee('Peserta Uji');
+            ->assertSee('Peserta Uji')
+            ->assertSee('Lihat Proposal')
+            ->assertSee('target="_blank" rel="noopener noreferrer"', false);
     }
 
-    public function test_admin_dapat_menyetujui_pengajuan_dengan_pdf(): void
+    public function test_operator_dapat_membuka_link_surat_balasan(): void
+    {
+        [$operator, $institution] = $this->operator('SMK Surat Drive');
+        $request = $this->pendingRequest($operator, $institution);
+        $admin = User::factory()->admin()->create();
+        $request->status = 'approved';
+        $request->processed_by = $admin->id;
+        $request->decided_at = now();
+        $request->reply_letter_path = $this->driveUrl();
+        $request->save();
+
+        $this->actingAs($operator)
+            ->get(route('operator.internship-requests.show', $request))
+            ->assertOk()
+            ->assertSee('Lihat Surat Balasan')
+            ->assertSee('target="_blank" rel="noopener noreferrer"', false);
+    }
+
+    public function test_admin_dapat_menyetujui_pengajuan_dengan_link_surat_google_drive(): void
     {
         Carbon::setTestNow(Carbon::parse('2027-01-01 09:30:00'));
         Storage::fake('local');
@@ -125,7 +146,7 @@ class InternshipRequestReviewTest extends TestCase
 
         $response = $this->actingAs($admin)->post(
             route('admin.internship-requests.decision', $request),
-            ['decision' => 'approved', 'reply_letter' => $this->pdfFile()],
+            ['decision' => 'approved', 'reply_letter_url' => $this->driveUrl()],
         );
 
         $request->refresh();
@@ -134,9 +155,8 @@ class InternshipRequestReviewTest extends TestCase
         $this->assertSame($admin->id, $request->processed_by);
         $this->assertNotNull($request->decided_at);
         $this->assertNotNull($request->reply_letter_path);
-        $this->assertStringStartsWith('reply-letters/', $request->reply_letter_path);
-        $this->assertStringEndsWith('.pdf', $request->reply_letter_path);
-        Storage::disk('local')->assertExists($request->reply_letter_path);
+        $this->assertSame($this->driveUrl(), $request->reply_letter_path);
+        $this->assertSame([], Storage::disk('local')->allFiles('reply-letters'));
         $this->assertDatabaseCount('registration_tokens', 1);
         $this->assertDatabaseCount('users_intern', 0);
 
@@ -156,7 +176,7 @@ class InternshipRequestReviewTest extends TestCase
             ->assertDontSee($plainToken);
     }
 
-    public function test_admin_dapat_menolak_pengajuan_dengan_pdf(): void
+    public function test_admin_dapat_menolak_pengajuan_dengan_link_surat_google_drive(): void
     {
         Storage::fake('local');
         [$operator, $institution] = $this->operator('SMK Rejected');
@@ -165,14 +185,14 @@ class InternshipRequestReviewTest extends TestCase
 
         $this->actingAs($admin)->post(
             route('admin.internship-requests.decision', $request),
-            ['decision' => 'rejected', 'reply_letter' => $this->pdfFile()],
+            ['decision' => 'rejected', 'reply_letter_url' => $this->driveUrl()],
         )->assertRedirect(route('admin.internship-requests.show', $request));
 
         $request->refresh();
         $this->assertSame('rejected', $request->status);
         $this->assertSame($admin->id, $request->processed_by);
         $this->assertNotNull($request->decided_at);
-        Storage::disk('local')->assertExists($request->reply_letter_path);
+        $this->assertSame($this->driveUrl(), $request->reply_letter_path);
         $this->assertDatabaseCount('registration_tokens', 0);
     }
 
@@ -189,7 +209,7 @@ class InternshipRequestReviewTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('admin.internship-requests.decision', $request), [
             'decision' => 'approved',
-            'reply_letter' => $this->pdfFile(),
+            'reply_letter_url' => $this->driveUrl(),
         ]);
 
         $response->assertOk()->assertViewIs('admin.registration-tokens.issued');
@@ -217,7 +237,7 @@ class InternshipRequestReviewTest extends TestCase
         $this->actingAs($admin)->from(route('admin.internship-requests.show', $request))
             ->post(route('admin.internship-requests.decision', $request), [
                 'decision' => 'approved',
-                'reply_letter' => $this->pdfFile(),
+                'reply_letter_url' => $this->driveUrl(),
             ])
             ->assertSessionHasErrors('decision');
 
@@ -248,7 +268,7 @@ class InternshipRequestReviewTest extends TestCase
         try {
             $this->actingAs($admin)->post(route('admin.internship-requests.decision', $request), [
                 'decision' => 'approved',
-                'reply_letter' => $this->pdfFile(),
+                'reply_letter_url' => $this->driveUrl(),
             ]);
             $this->fail('Kegagalan penerbitan token seharusnya membatalkan proses.');
         } catch (RuntimeException $exception) {
@@ -268,14 +288,14 @@ class InternshipRequestReviewTest extends TestCase
 
         $this->actingAs($admin)->post(route('admin.internship-requests.decision', $request), [
             'decision' => 'approved',
-            'reply_letter' => $this->pdfFile(),
+            'reply_letter_url' => $this->driveUrl(),
         ])->assertOk();
         $originalHash = RegistrationToken::query()->value('token_hash');
 
         $this->actingAs($admin)->from(route('admin.internship-requests.show', $request))
             ->post(route('admin.internship-requests.decision', $request), [
                 'decision' => 'approved',
-                'reply_letter' => $this->pdfFile('surat-kedua.pdf'),
+                'reply_letter_url' => $this->driveUrl(),
             ])
             ->assertSessionHasErrors('decision');
 
@@ -283,7 +303,7 @@ class InternshipRequestReviewTest extends TestCase
         $this->assertSame($originalHash, RegistrationToken::query()->value('token_hash'));
     }
 
-    public function test_keputusan_tanpa_file_ditolak(): void
+    public function test_keputusan_tanpa_link_surat_balasan_ditolak(): void
     {
         [$operator, $institution] = $this->operator('SMK Tanpa File');
         $request = $this->pendingRequest($operator, $institution);
@@ -292,7 +312,7 @@ class InternshipRequestReviewTest extends TestCase
         $this->actingAs($admin)
             ->from(route('admin.internship-requests.show', $request))
             ->post(route('admin.internship-requests.decision', $request), ['decision' => 'approved'])
-            ->assertSessionHasErrors('reply_letter');
+            ->assertSessionHasErrors('reply_letter_url');
 
         $this->assertSame('pending', $request->fresh()->status);
     }
@@ -307,7 +327,7 @@ class InternshipRequestReviewTest extends TestCase
             ->from(route('admin.internship-requests.show', $request))
             ->post(route('admin.internship-requests.decision', $request), [
                 'decision' => 'approved',
-                'reply_letter' => $this->pdfFile(),
+                'reply_letter_url' => $this->driveUrl(),
                 'status' => 'rejected',
                 'processed_by' => $operator->id,
                 'decided_at' => '2020-01-01 00:00:00',
@@ -322,7 +342,7 @@ class InternshipRequestReviewTest extends TestCase
         $this->assertNull($request->reply_letter_path);
     }
 
-    public function test_file_non_pdf_ditolak(): void
+    public function test_link_selain_google_drive_ditolak(): void
     {
         [$operator, $institution] = $this->operator('SMK File Salah');
         $request = $this->pendingRequest($operator, $institution);
@@ -332,14 +352,14 @@ class InternshipRequestReviewTest extends TestCase
             ->from(route('admin.internship-requests.show', $request))
             ->post(route('admin.internship-requests.decision', $request), [
                 'decision' => 'approved',
-                'reply_letter' => UploadedFile::fake()->create('surat.txt', 1, 'text/plain'),
+                'reply_letter_url' => 'http://drive.google.com/file/d/file-id/view',
             ])
-            ->assertSessionHasErrors('reply_letter');
+            ->assertSessionHasErrors('reply_letter_url');
 
         $this->assertSame('pending', $request->fresh()->status);
     }
 
-    public function test_file_lebih_dari_10_mb_ditolak(): void
+    public function test_link_dari_domain_lain_ditolak(): void
     {
         [$operator, $institution] = $this->operator('SMK File Besar');
         $request = $this->pendingRequest($operator, $institution);
@@ -349,14 +369,14 @@ class InternshipRequestReviewTest extends TestCase
             ->from(route('admin.internship-requests.show', $request))
             ->post(route('admin.internship-requests.decision', $request), [
                 'decision' => 'approved',
-                'reply_letter' => UploadedFile::fake()->create('surat.pdf', 10241, 'application/pdf'),
+                'reply_letter_url' => 'https://example.com/surat.pdf',
             ])
-            ->assertSessionHasErrors('reply_letter');
+            ->assertSessionHasErrors('reply_letter_url');
 
         $this->assertSame('pending', $request->fresh()->status);
     }
 
-    public function test_kegagalan_update_database_menghapus_hanya_file_baru(): void
+    public function test_kegagalan_update_database_tidak_mengubah_pengajuan(): void
     {
         Storage::fake('local');
         [$operator, $institution] = $this->operator('SMK Rollback');
@@ -374,7 +394,7 @@ class InternshipRequestReviewTest extends TestCase
         try {
             $this->actingAs($admin)->post(route('admin.internship-requests.decision', $request), [
                 'decision' => 'approved',
-                'reply_letter' => $this->pdfFile(),
+                'reply_letter_url' => $this->driveUrl(),
             ]);
         } catch (RuntimeException $exception) {
             $failedAsExpected = $exception->getMessage() === 'Simulasi kegagalan penyimpanan keputusan.';
@@ -395,7 +415,7 @@ class InternshipRequestReviewTest extends TestCase
 
         $this->actingAs($admin)->post(route('admin.internship-requests.decision', $request), [
             'decision' => 'approved',
-            'reply_letter' => $this->pdfFile(),
+            'reply_letter_url' => $this->driveUrl(),
         ])->assertOk();
 
         $originalPath = $request->fresh()->reply_letter_path;
@@ -403,13 +423,13 @@ class InternshipRequestReviewTest extends TestCase
             ->from(route('admin.internship-requests.show', $request))
             ->post(route('admin.internship-requests.decision', $request), [
                 'decision' => 'rejected',
-                'reply_letter' => $this->pdfFile('surat-kedua.pdf'),
+                'reply_letter_url' => $this->driveUrl(),
             ])
             ->assertSessionHasErrors('decision');
 
         $this->assertSame('approved', $request->fresh()->status);
         $this->assertSame($originalPath, $request->fresh()->reply_letter_path);
-        $this->assertCount(1, Storage::disk('local')->allFiles('reply-letters'));
+        $this->assertSame([], Storage::disk('local')->allFiles('reply-letters'));
     }
 
     public function test_admin_dapat_mengunduh_surat_dari_semua_institusi(): void
@@ -506,7 +526,7 @@ class InternshipRequestReviewTest extends TestCase
         $this->get(route('operator.internship-requests.reply-letter', $request))->assertRedirect(route('operator.login'));
         $this->post(route('admin.internship-requests.decision', $request), [
             'decision' => 'approved',
-            'reply_letter' => $this->pdfFile(),
+            'reply_letter_url' => $this->driveUrl(),
         ])->assertRedirect(route('admin.login'));
     }
 
@@ -517,7 +537,7 @@ class InternshipRequestReviewTest extends TestCase
 
         $this->actingAs($operator)->post(route('admin.internship-requests.decision', $request), [
             'decision' => 'approved',
-            'reply_letter' => $this->pdfFile(),
+            'reply_letter_url' => $this->driveUrl(),
         ])->assertForbidden();
 
         $this->assertSame('pending', $request->fresh()->status);

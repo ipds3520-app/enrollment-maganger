@@ -30,7 +30,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('operator.internship-requests.store') }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ route('operator.internship-requests.store') }}">
         @csrf
 
         <div class="page-stack">
@@ -94,23 +94,26 @@
                 <div class="card-header">
                     <div>
                         <h2 class="card-title">Proposal Magang</h2>
-                        <p class="card-description">Unggah satu proposal untuk seluruh peserta dalam pengajuan ini.</p>
+                        <p class="card-description">Unggah proposal ke Google Drive, atur aksesnya, lalu tempelkan link dokumen.</p>
                     </div>
                 </div>
 
                 <div class="form-grid">
                     <div class="field field-full">
-                        <label for="proposal">File proposal PDF <span class="req" aria-hidden="true">*</span></label>
+                        <label for="proposal_url">Link proposal Google Drive <span class="req" aria-hidden="true">*</span></label>
                         <input
-                            id="proposal"
-                            name="proposal"
-                            type="file"
-                            accept=".pdf,application/pdf"
+                            id="proposal_url"
+                            name="proposal_url"
+                            type="url"
+                            inputmode="url"
+                            value="{{ old('proposal_url') }}"
+                            placeholder="https://drive.google.com/file/d/..."
                             required
-                            @error('proposal') aria-invalid="true" @enderror
+                            autocomplete="url"
+                            @error('proposal_url') aria-invalid="true" @enderror
                         >
-                        <span class="field-hint">Format PDF, maksimal 10 MB.</span>
-                        @error('proposal')
+                        <span class="field-hint">Atur akses dokumen ke “Anyone with the link – Viewer”. Siapa pun yang memiliki link dapat membuka dokumen.</span>
+                        @error('proposal_url')
                             <span class="field-error">{{ $message }}</span>
                         @enderror
                     </div>

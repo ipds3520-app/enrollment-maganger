@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Rules\GoogleDriveUrl;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,14 +20,8 @@ class ProcessInternshipRequest extends FormRequest
     {
         return [
             'decision' => ['required', 'string', Rule::in(['approved', 'rejected'])],
-            'reply_letter' => [
-                'required',
-                'file',
-                'mimes:pdf',
-                'mimetypes:application/pdf',
-                'extensions:pdf',
-                'max:10240',
-            ],
+            'reply_letter' => ['prohibited'],
+            'reply_letter_url' => ['required', 'string', 'max:255', new GoogleDriveUrl],
             'institution_id' => ['prohibited'],
             'created_by' => ['prohibited'],
             'status' => ['prohibited'],
@@ -47,12 +42,8 @@ class ProcessInternshipRequest extends FormRequest
         return [
             'decision.required' => 'Pilih keputusan pengajuan.',
             'decision.in' => 'Keputusan harus berupa disetujui atau ditolak.',
-            'reply_letter.required' => 'Surat balasan PDF dari TU wajib diunggah.',
-            'reply_letter.file' => 'File surat balasan tidak valid.',
-            'reply_letter.mimes' => 'File surat balasan harus berformat PDF.',
-            'reply_letter.mimetypes' => 'Isi file surat balasan harus terdeteksi sebagai PDF.',
-            'reply_letter.extensions' => 'Ekstensi file surat balasan harus .pdf.',
-            'reply_letter.max' => 'Ukuran surat balasan maksimal 10 MB.',
+            'reply_letter_url.required' => 'Link surat balasan Google Drive wajib diisi.',
+            'reply_letter_url.max' => 'Link surat balasan terlalu panjang.',
             '*.prohibited' => 'Field keputusan tersebut tidak dapat ditentukan melalui formulir.',
         ];
     }

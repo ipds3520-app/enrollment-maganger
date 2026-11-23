@@ -10,12 +10,7 @@ use App\Models\InternshipRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use RuntimeException;
-use Throwable;
 
 class ProcessInternshipRequestController extends Controller
 {
@@ -26,63 +21,39 @@ class ProcessInternshipRequestController extends Controller
         IssueSharedRegistrationToken $issueSharedRegistrationToken,
     ): RedirectResponse|Response {
         $data = $request->validated();
-        $file = $request->file('reply_letter');
         $adminId = $request->user()->getKey();
-        $newPath = null;
-        $disk = Storage::disk('local');
 
-        try {
-            [$internshipRequest, $issuedTokens, $sharedTokenIssue] = DB::transaction(function () use ($data, $file, $adminId, $internshipRequestId, $disk, $issueRegistrationTokens, $issueSharedRegistrationToken, &$newPath): array {
-                $internshipRequest = InternshipRequest::query()
-                    ->lockForUpdate()
-                    ->findOrFail($internshipRequestId);
+        [$internshipRequest, $issuedTokens, $sharedTokenIssue] = DB::transaction(function () use ($data, $adminId, $internshipRequestId, $issueRegistrationTokens, $issueSharedRegistrationToken): array {
+            $internshipRequest = InternshipRequest::query()
+                ->lockForUpdate()
+                ->findOrFail($internshipRequestId);
 
-                if ($internshipRequest->status !== 'pending') {
-                    throw ValidationException::withMessages([
-                        'decision' => 'Pengajuan ini sudah diproses dan tidak dapat diputuskan kembali.',
-                    ]);
-                }
-
-                $directory = 'reply-letters';
-                do {
-                    $newPath = $directory.'/'.Str::uuid().'.pdf';
-                } while ($disk->exists($newPath));
-
-                $storedPath = $file->storeAs($directory, basename($newPath), 'local');
-
-                if ($storedPath !== $newPath || ! $disk->exists($newPath)) {
-                    throw new RuntimeException('File surat balasan gagal disimpan pada disk privat.');
-                }
-
-                $internshipRequest->status = $data['decision'];
-                $internshipRequest->processed_by = $adminId;
-                $internshipRequest->decided_at = now();
-                $internshipRequest->reply_letter_path = $newPath;
-                $internshipRequest->save();
-
-                $issuedTokens = [];
-                $sharedTokenIssue = null;
-
-                if ($data['decision'] === 'approved') {
-                    if ($internshipRequest->participant_count !== null) {
-                        $sharedTokenIssue = $issueSharedRegistrationToken->forApprovedRequest($internshipRequest);
-                    } else {
-                        $issuedTokens = $issueRegistrationTokens->forApprovedRequest($internshipRequest);
-                    }
-                }
-
-                return [$internshipRequest, $issuedTokens, $sharedTokenIssue];
-            });
-        } catch (Throwable $exception) {
-            if ($newPath !== null && $disk->exists($newPath) && ! $disk->delete($newPath)) {
-                Log::warning('Gagal membersihkan file surat balasan setelah transaksi dibatalkan.', [
-                    'path' => $newPath,
-                    'internship_request_id' => $internshipRequestId,
+            if ($internshipRequest->status !== 'pending') {
+                throw ValidationException::withMessages([
+                    'decision' => 'Pengajuan ini sudah diproses dan tidak dapat diputuskan kembali.',
                 ]);
             }
 
-            throw $exception;
-        }
+            $internshipRequest->status = $data['decision'];
+            $internshipRequest->processed_by = $adminId;
+            $internshipRequest->decided_at = now();
+            // Keep the existing database column for compatibility with prior records.
+            $internshipRequest->reply_letter_path = $data['reply_letter_url'];
+            $internshipRequest->save();
+
+            $issuedTokens = [];
+            $sharedTokenIssue = null;
+
+            if ($data['decision'] === 'approved') {
+                if ($internshipRequest->participant_count !== null) {
+                    $sharedTokenIssue = $issueSharedRegistrationToken->forApprovedRequest($internshipRequest);
+                } else {
+                    $issuedTokens = $issueRegistrationTokens->forApprovedRequest($internshipRequest);
+                }
+            }
+
+            return [$internshipRequest, $issuedTokens, $sharedTokenIssue];
+        });
 
         if ($data['decision'] === 'approved') {
             if ($sharedTokenIssue !== null) {

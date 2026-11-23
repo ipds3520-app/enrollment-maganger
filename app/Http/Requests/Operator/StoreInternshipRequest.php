@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Operator;
 
+use App\Rules\GoogleDriveUrl;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreInternshipRequest extends FormRequest
@@ -22,14 +23,8 @@ class StoreInternshipRequest extends FormRequest
             'start_date' => ['required', 'date_format:Y-m-d'],
             'end_date' => ['required', 'date_format:Y-m-d', 'after:start_date'],
             'participant_count' => ['required', 'integer', 'min:1', 'max:2147483647'],
-            'proposal' => [
-                'required',
-                'file',
-                'mimes:pdf',
-                'mimetypes:application/pdf',
-                'extensions:pdf',
-                'max:10240',
-            ],
+            'proposal' => ['prohibited'],
+            'proposal_url' => ['required', 'string', 'max:255', new GoogleDriveUrl],
             'institution_id' => ['prohibited'],
             'created_by' => ['prohibited'],
             'status' => ['prohibited'],
@@ -59,12 +54,8 @@ class StoreInternshipRequest extends FormRequest
             'participant_count.integer' => 'Jumlah peserta harus berupa bilangan bulat.',
             'participant_count.min' => 'Jumlah peserta minimal satu orang.',
             'participant_count.max' => 'Jumlah peserta terlalu besar.',
-            'proposal.required' => 'Proposal magang wajib diunggah.',
-            'proposal.file' => 'File proposal tidak valid.',
-            'proposal.mimes' => 'Proposal harus berformat PDF.',
-            'proposal.mimetypes' => 'Isi file proposal harus terdeteksi sebagai PDF.',
-            'proposal.extensions' => 'Ekstensi file proposal harus .pdf.',
-            'proposal.max' => 'Ukuran proposal maksimal 10 MB.',
+            'proposal_url.required' => 'Link proposal Google Drive wajib diisi.',
+            'proposal_url.max' => 'Link proposal terlalu panjang.',
             '*.prohibited' => 'Field tersebut tidak dapat ditentukan melalui formulir.',
         ];
     }

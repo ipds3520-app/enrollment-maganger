@@ -292,10 +292,15 @@
                 <h2 class="card-title">Proposal Magang</h2>
             </div>
             @if ($internshipRequest->proposal_path)
-                <a class="btn btn-secondary" href="{{ route('admin.internship-requests.proposal', $internshipRequest) }}">
-                    @include('layouts.partials.icon', ['name' => 'download'])
-                    <span>Unduh proposal PDF</span>
-                </a>
+                @if (\App\Rules\GoogleDriveUrl::isValid($internshipRequest->proposal_path))
+                    <a class="btn btn-secondary" href="{{ $internshipRequest->proposal_path }}" target="_blank" rel="noopener noreferrer">Lihat Proposal</a>
+                    <p class="field-hint">Siapa pun yang memiliki link dapat mengakses dokumen sesuai pengaturan Google Drive.</p>
+                @else
+                    <a class="btn btn-secondary" href="{{ route('admin.internship-requests.proposal', $internshipRequest) }}">
+                        @include('layouts.partials.icon', ['name' => 'download'])
+                        <span>Unduh proposal PDF</span>
+                    </a>
+                @endif
             @else
                 <p class="muted">Proposal belum tersedia untuk pengajuan ini.</p>
             @endif
@@ -324,7 +329,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('admin.internship-requests.decision', $internshipRequest) }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('admin.internship-requests.decision', $internshipRequest) }}">
                     @csrf
                     <div class="form-grid">
                         <div class="field">
@@ -336,9 +341,10 @@
                             </select>
                         </div>
                         <div class="field">
-                            <label for="reply_letter">Surat balasan PDF dari TU <span class="req" aria-hidden="true">*</span></label>
-                            <input id="reply_letter" name="reply_letter" type="file" accept=".pdf,application/pdf" required>
-                            <span class="field-hint">Format PDF, maksimal 10 MB.</span>
+                            <label for="reply_letter_url">Link surat balasan Google Drive <span class="req" aria-hidden="true">*</span></label>
+                            <input id="reply_letter_url" name="reply_letter_url" type="url" inputmode="url" value="{{ old('reply_letter_url') }}" placeholder="https://drive.google.com/file/d/..." required autocomplete="url" @error('reply_letter_url') aria-invalid="true" @enderror>
+                            <span class="field-hint">Atur akses ke “Anyone with the link – Viewer”. Siapa pun yang memiliki link dapat membuka dokumen.</span>
+                            @error('reply_letter_url') <span class="field-error">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
@@ -352,10 +358,15 @@
                 <div class="card-header">
                     <h2 class="card-title">Surat Balasan</h2>
                 </div>
-                <a class="btn btn-secondary" href="{{ route('admin.internship-requests.reply-letter', $internshipRequest) }}">
-                    @include('layouts.partials.icon', ['name' => 'download'])
-                    <span>Unduh surat balasan PDF</span>
-                </a>
+                @if (\App\Rules\GoogleDriveUrl::isValid($internshipRequest->reply_letter_path))
+                    <a class="btn btn-secondary" href="{{ $internshipRequest->reply_letter_path }}" target="_blank" rel="noopener noreferrer">Lihat Surat Balasan</a>
+                    <p class="field-hint">Siapa pun yang memiliki link dapat mengakses dokumen sesuai pengaturan Google Drive.</p>
+                @else
+                    <a class="btn btn-secondary" href="{{ route('admin.internship-requests.reply-letter', $internshipRequest) }}">
+                        @include('layouts.partials.icon', ['name' => 'download'])
+                        <span>Unduh surat balasan PDF</span>
+                    </a>
+                @endif
             </section>
         @endif
     </div>

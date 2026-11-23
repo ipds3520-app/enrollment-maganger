@@ -9,7 +9,6 @@ use App\Models\SharedRegistrationClaim;
 use App\Models\SharedRegistrationToken;
 use App\Models\User;
 use App\Models\UserIntern;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
@@ -47,7 +46,7 @@ class SharedInternRegistrationTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('admin.internship-requests.decision', $request), [
             'decision' => 'approved',
-            'reply_letter' => UploadedFile::fake()->create('balasan.pdf', 1, 'application/pdf'),
+            'reply_letter_url' => 'https://drive.google.com/file/d/drive-file-id/view?usp=sharing',
         ]);
 
         $response->assertOk()->assertViewIs('admin.shared-registration-tokens.issued');
@@ -128,7 +127,7 @@ class SharedInternRegistrationTest extends TestCase
             ->post(route('admin.internship-requests.decision', $request), [
                 'decision' => 'approved',
                 'participant_count' => 99,
-                'reply_letter' => UploadedFile::fake()->create('balasan.pdf', 1, 'application/pdf'),
+                'reply_letter_url' => 'https://drive.google.com/file/d/drive-file-id/view?usp=sharing',
             ])
             ->assertSessionHasErrors('participant_count');
 
@@ -144,7 +143,7 @@ class SharedInternRegistrationTest extends TestCase
         $this->from(route('admin.internship-requests.show', $request))
             ->post(route('admin.internship-requests.decision', $request), [
                 'decision' => 'approved',
-                'reply_letter' => UploadedFile::fake()->create('balasan-kedua.pdf', 1, 'application/pdf'),
+                'reply_letter_url' => 'https://drive.google.com/file/d/drive-file-id/view?usp=sharing',
             ])
             ->assertSessionHasErrors('decision');
 

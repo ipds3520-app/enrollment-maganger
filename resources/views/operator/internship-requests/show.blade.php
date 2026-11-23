@@ -122,10 +122,15 @@
                 <h2 class="card-title">Proposal Magang</h2>
             </div>
             @if ($internshipRequest->proposal_path)
-                <a class="btn btn-secondary" href="{{ route('operator.internship-requests.proposal', $internshipRequest) }}">
-                    @include('layouts.partials.icon', ['name' => 'download'])
-                    <span>Unduh proposal PDF</span>
-                </a>
+                @if (\App\Rules\GoogleDriveUrl::isValid($internshipRequest->proposal_path))
+                    <a class="btn btn-secondary" href="{{ $internshipRequest->proposal_path }}" target="_blank" rel="noopener noreferrer">Lihat Proposal</a>
+                    <p class="field-hint">Siapa pun yang memiliki link dapat mengakses dokumen sesuai pengaturan Google Drive.</p>
+                @else
+                    <a class="btn btn-secondary" href="{{ route('operator.internship-requests.proposal', $internshipRequest) }}">
+                        @include('layouts.partials.icon', ['name' => 'download'])
+                        <span>Unduh proposal PDF</span>
+                    </a>
+                @endif
             @else
                 <p class="muted">Proposal belum tersedia untuk pengajuan ini.</p>
             @endif
@@ -213,10 +218,15 @@
                 <div class="card-header">
                     <h2 class="card-title">Surat Balasan</h2>
                 </div>
-                <a class="btn btn-secondary" href="{{ route('operator.internship-requests.reply-letter', $internshipRequest) }}">
-                    @include('layouts.partials.icon', ['name' => 'download'])
-                    <span>Unduh surat balasan PDF</span>
-                </a>
+                @if (\App\Rules\GoogleDriveUrl::isValid($internshipRequest->reply_letter_path))
+                    <a class="btn btn-secondary" href="{{ $internshipRequest->reply_letter_path }}" target="_blank" rel="noopener noreferrer">Lihat Surat Balasan</a>
+                    <p class="field-hint">Siapa pun yang memiliki link dapat mengakses dokumen sesuai pengaturan Google Drive.</p>
+                @else
+                    <a class="btn btn-secondary" href="{{ route('operator.internship-requests.reply-letter', $internshipRequest) }}">
+                        @include('layouts.partials.icon', ['name' => 'download'])
+                        <span>Unduh surat balasan PDF</span>
+                    </a>
+                @endif
             </section>
         @endif
     </div>

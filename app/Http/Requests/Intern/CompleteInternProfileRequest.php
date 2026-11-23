@@ -33,7 +33,7 @@ class CompleteInternProfileRequest extends FormRequest
                     ->where(fn ($query) => $query->where('internship_request_id', $requestId))
                     ->ignore($intern?->applicant_id),
             ],
-            'school_name' => ['required', 'string', 'max:150'],
+            'school_name' => ['exclude'],
             'school_major' => ['required', 'string', 'max:100'],
             'phone' => ['required', 'string', 'max:20'],
             'address' => ['required', 'string', 'max:2000'],
@@ -43,6 +43,15 @@ class CompleteInternProfileRequest extends FormRequest
             'user_intern_id' => ['prohibited'],
             'shared_registration_token_id' => ['prohibited'],
             'used_count' => ['prohibited'],
+        ];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'nik.required' => 'NIK wajib diisi.',
+            'nik.digits' => 'NIK harus terdiri dari tepat 16 angka tanpa huruf atau simbol.',
         ];
     }
 }

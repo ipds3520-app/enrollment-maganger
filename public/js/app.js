@@ -29,6 +29,44 @@
 
     applyTheme(currentTheme(), false);
 
+    document.querySelectorAll('[data-numeric-only]').forEach(function (input) {
+        input.addEventListener('input', function () {
+            var numericValue = input.value.replace(/[^0-9]/g, '');
+            var maxLength = Number(input.getAttribute('maxlength'));
+
+            input.value = maxLength > 0 ? numericValue.slice(0, maxLength) : numericValue;
+        });
+    });
+
+    document.querySelectorAll('form[data-require-complete-nik]').forEach(function (form) {
+        var nik = form.querySelector('#nik');
+        var progress = form.querySelector('#nik-progress');
+        var gatedControls = form.querySelectorAll(
+            'input:not([type="hidden"]):not(#nik), select, textarea, button[type="submit"]'
+        );
+
+        if (!nik) {
+            return;
+        }
+
+        function updateNikGate() {
+            var isComplete = /^[0-9]{16}$/.test(nik.value);
+
+            gatedControls.forEach(function (control) {
+                control.disabled = !isComplete;
+            });
+
+            if (progress) {
+                progress.textContent = isComplete
+                    ? 'NIK sudah lengkap. Anda dapat melanjutkan ke kolom berikutnya.'
+                    : 'Masukkan tepat 16 digit angka untuk membuka kolom berikutnya.';
+            }
+        }
+
+        nik.addEventListener('input', updateNikGate);
+        updateNikGate();
+    });
+
     document.querySelectorAll('[data-theme-toggle]').forEach(function (button) {
         button.addEventListener('click', function () {
             applyTheme(currentTheme() === 'dark' ? 'light' : 'dark', true);

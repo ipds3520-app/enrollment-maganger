@@ -19,14 +19,20 @@ class InternProfileController extends Controller
     {
         /** @var UserIntern $intern */
         $intern = $request->user('intern');
-        $intern->load(['applicant', 'sharedRegistrationClaim']);
+        $intern->load([
+            'applicant',
+            'sharedRegistrationClaim.sharedRegistrationToken.internshipRequest.institution',
+        ]);
 
         if ($intern->sharedRegistrationClaim === null) {
             return redirect()->route('intern.dashboard');
         }
 
         if ($intern->sharedRegistrationClaim->status === 'pending_profile') {
-            return response()->view('intern.profile.edit', ['intern' => $intern])
+            return response()->view('intern.profile.edit', [
+                'intern' => $intern,
+                'schoolName' => $intern->sharedRegistrationClaim->sharedRegistrationToken->internshipRequest->institution->name,
+            ])
                 ->withHeaders($this->sensitiveHeaders());
         }
 
@@ -61,11 +67,17 @@ class InternProfileController extends Controller
                 ]);
             }
 
+            $schoolName = $token->internshipRequest()
+                ->with('institution')
+                ->firstOrFail()
+                ->institution
+                ->name;
+
             $applicant = $lockedClaim->applicant()->lockForUpdate()->firstOrFail();
             $applicant->forceFill([
                 'nik' => $data['nik'],
                 'student_number' => $data['student_number'],
-                'school_name' => $data['school_name'],
+                'school_name' => $schoolName,
                 'school_major' => $data['school_major'],
                 'phone' => $data['phone'],
                 'address' => $data['address'],

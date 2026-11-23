@@ -98,16 +98,16 @@ class SharedInternRegistrationTest extends TestCase
         $this->assertDatabaseCount('registration_tokens', 0);
     }
 
-    public function test_hasil_penerbitan_token_memiliki_header_privasi_dan_detail_tidak_membocorkan_plaintext(): void
+    public function test_admin_dapat_melihat_token_dari_detail_dengan_header_privasi(): void
     {
         [$request, , $plaintext] = $this->approvedRequest();
         $this->assertSame(2, SharedRegistrationToken::query()->sole()->quota);
         $detail = $this->get(route('admin.internship-requests.show', $request));
-        $detail->assertOk()->assertDontSee($plaintext);
+        $detail->assertOk()->assertSee($plaintext)->assertSee('Token untuk Operator')->assertSee('Salin token');
         $this->assertStringContainsString('no-store', $detail->headers->get('Cache-Control', ''));
         $this->assertSame('no-referrer', $detail->headers->get('Referrer-Policy'));
         $issued = $this->get(route('admin.internship-requests.show', $request));
-        $this->assertStringNotContainsString($plaintext, $issued->getContent());
+        $this->assertStringContainsString($plaintext, $issued->getContent());
     }
 
     public function test_admin_tidak_dapat_mengubah_kuota_saat_approval(): void
@@ -194,7 +194,7 @@ class SharedInternRegistrationTest extends TestCase
 
     public function test_profil_lengkap_mengurangi_kuota_satu_kali_dan_menyimpan_data_pada_applicant(): void
     {
-        [, , $plaintext] = $this->approvedRequest(1);
+        [$request, , $plaintext] = $this->approvedRequest(1);
         $this->register($plaintext, 'profile@example.test');
         $intern = UserIntern::query()->sole();
         $applicant = $intern->applicant;
@@ -209,7 +209,7 @@ class SharedInternRegistrationTest extends TestCase
             'id' => $applicant->id,
             'nik' => '3201234567890123',
             'student_number' => $profile['student_number'],
-            'school_name' => 'Universitas Contoh',
+            'school_name' => $request->institution->name,
             'phone' => '081234567890',
         ]);
         $this->assertSame('081234567890', $intern->fresh()->phone);
@@ -217,7 +217,7 @@ class SharedInternRegistrationTest extends TestCase
         $this->assertSame('exhausted', $token->fresh()->status);
         $this->assertSame('completed', SharedRegistrationClaim::query()->sole()->status);
         $profileResponse = $this->get(route('intern.profile.show'));
-        $profileResponse->assertOk()->assertViewIs('intern.profile.show')->assertSee('Universitas Contoh');
+        $profileResponse->assertOk()->assertViewIs('intern.profile.show')->assertSee($request->institution->name);
         $this->assertStringContainsString('no-store', $profileResponse->headers->get('Cache-Control', ''));
         $this->assertSame('no-referrer', $profileResponse->headers->get('Referrer-Policy'));
 
@@ -235,7 +235,7 @@ class SharedInternRegistrationTest extends TestCase
         $this->actingAs($intern, 'intern')->put(route('intern.profile.update'), [
             'nik' => '123',
             'student_number' => '',
-        ])->assertSessionHasErrors(['nik', 'student_number', 'school_name', 'school_major', 'phone', 'address', 'birth_date', 'gender']);
+        ])->assertSessionHasErrors(['nik', 'student_number', 'school_major', 'phone', 'address', 'birth_date', 'gender']);
 
         $this->assertSame(0, SharedRegistrationToken::query()->sole()->used_count);
         $this->assertSame('pending_profile', SharedRegistrationClaim::query()->sole()->status);

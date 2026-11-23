@@ -292,7 +292,36 @@
                     </div>
                 </div>
 
-                <p class="card-note">Plaintext token tidak dapat dilihat kembali. Operator menerima token dari Admin setelah approval.</p>
+                @if ($sharedToken->status === 'active' && $sharedToken->token_encrypted !== null)
+                    <div class="field">
+                        <label for="admin-shared-registration-token">Token untuk Operator</label>
+                        <div class="token-box">
+                            <input
+                                id="admin-shared-registration-token"
+                                class="input mono"
+                                type="text"
+                                readonly
+                                value="{{ $sharedToken->token_encrypted }}"
+                                autocomplete="off"
+                                spellcheck="false"
+                            >
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                data-copy-target="#admin-shared-registration-token"
+                                data-copy-done="Token tersalin"
+                            >
+                                @include('layouts.partials.icon', ['name' => 'copy'])
+                                <span data-copy-label aria-live="polite">Salin token</span>
+                            </button>
+                        </div>
+                        <span class="field-hint">Bagikan token ini kepada Operator pemilik pengajuan.</span>
+                    </div>
+                @elseif ($sharedToken->token_encrypted === null)
+                    <p class="card-note">Token ini berasal dari penerbitan lama dan hanya tersimpan sebagai hash, sehingga tidak dapat ditampilkan kembali.</p>
+                @else
+                    <p class="card-note">Token berstatus {{ $sharedStatusLabel }} dan tidak dapat digunakan untuk pendaftaran baru.</p>
+                @endif
 
                 <form method="POST" action="{{ route('admin.internship-requests.shared-registration-token.quota', $internshipRequest) }}" class="form-grid form-grid--inline">
                     @csrf

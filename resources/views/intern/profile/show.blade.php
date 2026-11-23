@@ -85,7 +85,7 @@
         <section class="card">
             <div class="card-header">
                 <div>
-                    <h2 class="card-title">Alamat</h2>
+                    <h2 class="card-title">Alamat Domisili</h2>
                     <p class="card-description">Alamat tempat tinggal peserta.</p>
                 </div>
             </div>

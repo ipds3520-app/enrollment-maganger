@@ -31,7 +31,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('intern.profile.update') }}">
+    <form method="POST" action="{{ route('intern.profile.update') }}" data-require-complete-nik>
         @csrf
         @method('PUT')
 
@@ -69,13 +69,18 @@
                         <label for="nik">NIK <span class="req" aria-hidden="true">*</span></label>
                         <input
                             id="nik"
+                            type="text"
                             name="nik"
                             value="{{ old('nik') }}"
+                            data-numeric-only
                             inputmode="numeric"
                             maxlength="16"
+                            pattern="[0-9]{16}"
+                            title="NIK harus terdiri dari tepat 16 angka."
                             required
                             @error('nik') aria-invalid="true" @enderror
                         >
+                        <span id="nik-progress" class="field-hint" aria-live="polite">Masukkan tepat 16 digit angka untuk membuka kolom berikutnya.</span>
                         @error('nik') <span class="field-error">{{ $message }}</span> @enderror
                     </div>
 
@@ -93,16 +98,16 @@
                     </div>
 
                     <div class="field">
-                        <label for="school_name">Asal kampus/sekolah <span class="req" aria-hidden="true">*</span></label>
+                        <label for="school_name">Asal kampus/sekolah</label>
                         <input
                             id="school_name"
-                            name="school_name"
-                            value="{{ old('school_name') }}"
+                            type="text"
+                            value="{{ $schoolName }}"
                             maxlength="150"
-                            required
-                            @error('school_name') aria-invalid="true" @enderror
+                            readonly
+                            aria-readonly="true"
                         >
-                        @error('school_name') <span class="field-error">{{ $message }}</span> @enderror
+                        <span class="field-hint">Diisi otomatis sesuai institusi yang terkait dengan token pendaftaran Anda.</span>
                     </div>
 
                     <div class="field">
@@ -155,7 +160,7 @@
                     </div>
 
                     <div class="field field-full">
-                        <label for="address">Alamat <span class="req" aria-hidden="true">*</span></label>
+                        <label for="address">Alamat Domisili <span class="req" aria-hidden="true">*</span></label>
                         <textarea
                             id="address"
                             name="address"

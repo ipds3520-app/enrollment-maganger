@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\InternParticipantController;
 use App\Http\Controllers\Admin\InternPasswordResetRequestController;
 use App\Http\Controllers\Admin\InternshipRequestController as AdminInternshipRequestController;
 use App\Http\Controllers\Admin\ProcessInternshipRequestController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Operator\DashboardController as OperatorDashboardContro
 use App\Http\Controllers\Operator\InternshipRequestController;
 use App\Http\Controllers\ProposalDownloadController;
 use App\Http\Controllers\ReplyLetterDownloadController;
+use App\Http\Middleware\EnsureInternAuthenticationVersion;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -77,7 +79,9 @@ Route::middleware('guest:operator')->group(function () {
 
 Route::post('/admin/logout', [AuthenticatedSessionController::class, 'destroyAdmin'])->middleware('auth:admin')->name('admin.logout');
 Route::post('/operator/logout', [AuthenticatedSessionController::class, 'destroyOperator'])->middleware('auth:operator')->name('operator.logout');
-Route::post('/intern/logout', [AuthenticatedSessionController::class, 'destroyIntern'])->middleware('auth:intern')->name('intern.logout');
+Route::post('/intern/logout', [AuthenticatedSessionController::class, 'destroyIntern'])
+    ->middleware(['auth:intern', EnsureInternAuthenticationVersion::class])
+    ->name('intern.logout');
 
 Route::get('/intern/register', [InternRegistrationController::class, 'create'])
     ->name('intern.register');
@@ -87,6 +91,33 @@ Route::post('/intern/register', [InternRegistrationController::class, 'store'])
 
 Route::middleware(['auth:admin,operator,intern', 'role:admin,admin'])->group(function () {
     Route::get('/admin/dashboard', AdminDashboardController::class)->name('admin.dashboard');
+    Route::prefix('/admin/intern-participants')->name('admin.intern-participants.')->group(function () {
+        Route::get('/', [InternParticipantController::class, 'index'])->name('index');
+        Route::get('/archived', [InternParticipantController::class, 'archivedIndex'])->name('archived.index');
+        Route::post('/archived/bulk-restore', [InternParticipantController::class, 'bulkRestore'])->name('archived.bulk-restore');
+        Route::get('/archived/{userInternId}', [InternParticipantController::class, 'showArchived'])
+            ->whereNumber('userInternId')
+            ->name('archived.show');
+        Route::post('/archived/{userInternId}/restore', [InternParticipantController::class, 'restore'])
+            ->whereNumber('userInternId')
+            ->name('restore');
+        Route::post('/bulk-archive', [InternParticipantController::class, 'bulkArchive'])->name('bulk-archive');
+        Route::get('/{userInternId}', [InternParticipantController::class, 'show'])
+            ->whereNumber('userInternId')
+            ->name('show');
+        Route::get('/{userInternId}/edit', [InternParticipantController::class, 'edit'])
+            ->whereNumber('userInternId')
+            ->name('edit');
+        Route::put('/{userInternId}', [InternParticipantController::class, 'update'])
+            ->whereNumber('userInternId')
+            ->name('update');
+        Route::delete('/{userInternId}/archive', [InternParticipantController::class, 'archive'])
+            ->whereNumber('userInternId')
+            ->name('archive');
+        Route::patch('/{userInternId}/lifecycle', [InternParticipantController::class, 'updateLifecycle'])
+            ->whereNumber('userInternId')
+            ->name('lifecycle.update');
+    });
     Route::get('/admin/shared-registration-tokens', [SharedRegistrationTokenController::class, 'index'])
         ->name('admin.shared-registration-tokens.index');
     Route::get('/admin/internship-requests', [AdminInternshipRequestController::class, 'index'])
@@ -138,7 +169,7 @@ Route::middleware(['auth:operator,admin,intern', 'role:operator,operator'])->gro
     Route::get('/operator/dashboard', OperatorDashboardController::class)->name('operator.dashboard');
 });
 
-Route::middleware('auth:intern')->group(function () {
+Route::middleware(['auth:intern', EnsureInternAuthenticationVersion::class])->group(function () {
     Route::get('/intern/profile', [InternProfileController::class, 'show'])
         ->name('intern.profile.show');
     Route::get('/intern/profile/edit', [InternProfileController::class, 'edit'])

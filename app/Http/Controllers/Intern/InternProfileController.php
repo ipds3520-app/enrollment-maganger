@@ -95,7 +95,7 @@ class InternProfileController extends Controller
                     ->lockForUpdate()
                     ->findOrFail($intern->getKey());
 
-                $applicant->forceFill([
+                $applicantChanges = [
                     'name' => $data['name'],
                     'student_number' => $data['student_number'],
                     'school_major' => $data['school_major'],
@@ -103,7 +103,14 @@ class InternProfileController extends Controller
                     'address' => $data['address'],
                     'birth_date' => $data['birth_date'],
                     'gender' => $data['gender'],
-                ])->save();
+                ];
+
+                if ($applicant->participant_status === null) {
+                    $applicantChanges['participant_status'] = 'active';
+                    $applicantChanges['completed_at'] = null;
+                }
+
+                $applicant->forceFill($applicantChanges)->save();
 
                 $lockedIntern->forceFill([
                     'name' => $data['name'],
@@ -130,11 +137,12 @@ class InternProfileController extends Controller
         /** @var UserIntern $intern */
         $intern = $request->user('intern');
         $data = $request->validated();
+        $sessionAuthVersion = $request->session()->get('intern_auth_version');
         $claim = SharedRegistrationClaim::query()
             ->where('user_intern_id', $intern->getKey())
             ->firstOrFail();
 
-        $saved = DB::transaction(function () use ($claim, $intern, $data): string {
+        $saved = DB::transaction(function () use ($claim, $intern, $data, $sessionAuthVersion): string {
             $token = SharedRegistrationToken::query()
                 ->lockForUpdate()
                 ->findOrFail($claim->shared_registration_token_id);
@@ -142,14 +150,32 @@ class InternProfileController extends Controller
                 ->lockForUpdate()
                 ->findOrFail($claim->getKey());
 
-            if ($lockedClaim->status === 'completed') {
-                return 'already_completed';
-            }
+            $alreadyCompleted = $lockedClaim->status === 'completed';
 
-            if ($token->status !== 'active' || $token->used_count >= $token->quota) {
+            if (! $alreadyCompleted && ($token->status !== 'active' || $token->used_count >= $token->quota)) {
                 throw ValidationException::withMessages([
                     'profile' => 'Token sudah dicabut atau kuotanya telah terpenuhi. Hubungi Operator institusi Anda.',
                 ]);
+            }
+
+            $applicant = $lockedClaim->applicant()->lockForUpdate()->firstOrFail();
+            $lockedIntern = UserIntern::query()
+                ->lockForUpdate()
+                ->findOrFail($intern->getKey());
+
+            if (
+                $sessionAuthVersion === null
+                || (int) $lockedIntern->auth_version !== (int) $sessionAuthVersion
+            ) {
+                abort(403, 'Sesi peserta telah berakhir. Silakan login kembali.');
+            }
+
+            if ((int) $lockedIntern->applicant_id !== (int) $applicant->getKey()) {
+                abort(409, 'Relasi akun dan profil peserta berubah. Muat ulang halaman lalu coba kembali.');
+            }
+
+            if ($alreadyCompleted) {
+                return 'already_completed';
             }
 
             $schoolName = $token->internshipRequest()
@@ -158,7 +184,6 @@ class InternProfileController extends Controller
                 ->institution
                 ->name;
 
-            $applicant = $lockedClaim->applicant()->lockForUpdate()->firstOrFail();
             $applicant->forceFill([
                 'nik' => $data['nik'],
                 'student_number' => $data['student_number'],
@@ -168,9 +193,11 @@ class InternProfileController extends Controller
                 'address' => $data['address'],
                 'birth_date' => $data['birth_date'],
                 'gender' => $data['gender'],
+                'participant_status' => 'active',
+                'completed_at' => null,
             ])->save();
 
-            $intern->forceFill(['phone' => $data['phone']])->save();
+            $lockedIntern->forceFill(['phone' => $data['phone']])->save();
             $lockedClaim->forceFill([
                 'status' => 'completed',
                 'completed_at' => now(),

@@ -35,5 +35,11 @@ trait UsesSqliteTestDatabase
             '--path' => 'tests/database/migrations',
             '--force' => true,
         ])->run();
+
+        $participantLifecycleMigration = require base_path('database/migrations/2026_11_26_000001_add_intern_participant_lifecycle_and_soft_deletes.php');
+        $participantLifecycleMigration->up();
+
+        $internAuthVersionMigration = require base_path('database/migrations/2026_11_26_000002_add_auth_version_to_users_intern_table.php');
+        $internAuthVersionMigration->up();
     }
 }

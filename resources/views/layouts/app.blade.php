@@ -40,6 +40,8 @@
                 [
                     'label' => 'Manajemen',
                     'items' => [
+                        ['route' => 'admin.intern-participants.index', 'label' => 'Kelola Peserta Magang', 'icon' => 'users', 'active' => ['admin.intern-participants.index', 'admin.intern-participants.show', 'admin.intern-participants.edit', 'admin.intern-participants.update', 'admin.intern-participants.archive', 'admin.intern-participants.lifecycle.*']],
+                        ['route' => 'admin.intern-participants.archived.index', 'label' => 'Peserta Terarsip', 'icon' => 'archive', 'active' => ['admin.intern-participants.archived.*', 'admin.intern-participants.restore']],
                         ['route' => 'admin.internship-requests.index', 'label' => 'Pengajuan Magang', 'icon' => 'file-text', 'active' => 'admin.internship-requests.*'],
                         ['route' => 'admin.intern-password-reset-requests.index', 'label' => 'Reset Password Peserta', 'icon' => 'key', 'active' => 'admin.intern-password-reset-requests.*'],
                     ],

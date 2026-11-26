@@ -9,6 +9,7 @@ use App\Models\SharedRegistrationClaim;
 use App\Models\SharedRegistrationToken;
 use App\Models\User;
 use App\Models\UserIntern;
+use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
@@ -177,6 +178,7 @@ class SharedInternRegistrationTest extends TestCase
             ->assertRedirect(route('intern.profile.show'))
             ->assertSessionHas('status');
         $first = UserIntern::query()->where('email', 'one@example.test')->sole();
+        $this->assertNull($first->applicant->participant_status);
         $this->assertAuthenticatedAs($first, 'intern');
         $this->get(route('intern.profile.show'))->assertOk()->assertSee('Lengkapi Data Pribadi');
 
@@ -211,6 +213,8 @@ class SharedInternRegistrationTest extends TestCase
             'student_number' => $profile['student_number'],
             'school_name' => $request->institution->name,
             'phone' => '081234567890',
+            'participant_status' => 'active',
+            'completed_at' => null,
         ]);
         $this->assertSame('081234567890', $intern->fresh()->phone);
         $this->assertSame(1, $token->fresh()->used_count);
@@ -222,7 +226,8 @@ class SharedInternRegistrationTest extends TestCase
         $this->assertSame('no-referrer', $profileResponse->headers->get('Referrer-Policy'));
 
         $this->actingAs($intern, 'intern')->put(route('intern.profile.update'), $this->profilePayload())
-            ->assertForbidden();
+            ->assertRedirect(route('intern.profile.show'))
+            ->assertSessionHas('status', 'Profil Anda sudah lengkap.');
         $this->assertSame(1, $token->fresh()->used_count);
     }
 
@@ -239,6 +244,28 @@ class SharedInternRegistrationTest extends TestCase
 
         $this->assertSame(0, SharedRegistrationToken::query()->sole()->used_count);
         $this->assertSame('pending_profile', SharedRegistrationClaim::query()->sole()->status);
+        $this->assertNull($intern->applicant->fresh()->participant_status);
+    }
+
+    public function test_profil_completion_menolak_akun_yang_sudah_soft_deleted_tanpa_mengubah_claim_kuota_atau_profil(): void
+    {
+        [, , $plaintext] = $this->approvedRequest(2);
+        $this->register($plaintext, 'archived-before-completion@example.test');
+        $intern = UserIntern::query()->sole();
+        $applicant = $intern->applicant;
+        $claim = $intern->sharedRegistrationClaim;
+        $intern->delete();
+
+        $this->withoutMiddleware(Authenticate::class)
+            ->put(route('intern.profile.update'), $this->profilePayload())
+            ->assertNotFound();
+
+        $this->assertSame('pending_profile', $claim->fresh()->status);
+        $this->assertNull($claim->fresh()->completed_at);
+        $this->assertSame(0, SharedRegistrationToken::query()->sole()->used_count);
+        $this->assertSame('active', SharedRegistrationToken::query()->sole()->status);
+        $this->assertNull($applicant->fresh()->nik);
+        $this->assertNull($applicant->fresh()->participant_status);
     }
 
     public function test_dua_akun_yang_berebut_slot_terakhir_tidak_dapat_melampaui_kuota(): void

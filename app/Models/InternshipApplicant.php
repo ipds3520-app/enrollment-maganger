@@ -47,9 +47,20 @@ class InternshipApplicant extends Model
         return $this->hasOne(SharedRegistrationClaim::class, 'internship_applicant_id');
     }
 
+    /** @return HasMany<InternshipParticipantStatusHistory, $this> */
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(InternshipParticipantStatusHistory::class, 'applicant_id')
+            ->orderBy('changed_at')
+            ->orderBy('id');
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['birth_date' => 'date'];
+        return [
+            'birth_date' => 'date',
+            'completed_at' => 'datetime',
+        ];
     }
 }

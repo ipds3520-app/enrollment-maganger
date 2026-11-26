@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Intern;
 
+use App\Http\Middleware\EnsureInternAuthenticationVersion;
 use App\Models\Institution;
 use App\Models\InternshipApplicant;
 use App\Models\InternshipRequest;
@@ -70,20 +71,140 @@ class InternProfileEditTest extends TestCase
     {
         [$intern, , , $token, $claim] = $this->sharedAccount('pending_profile');
 
-        $this->actingAs($intern, 'intern')
-            ->get(route('intern.profile.edit'))
+        $this->post(route('intern.login.store'), [
+            'email' => $intern->email,
+            'password' => 'secret-password',
+        ])->assertRedirect(route('intern.dashboard'));
+        $this->get(route('intern.profile.edit'))
             ->assertRedirect(route('intern.profile.show'));
 
-        $this->actingAs($intern, 'intern')
-            ->put(route('intern.profile.update-details'), $this->editPayload())
+        $this->put(route('intern.profile.update-details'), $this->editPayload())
             ->assertForbidden();
 
-        $this->actingAs($intern, 'intern')
-            ->put(route('intern.profile.update'), $this->completionPayload())
+        $this->put(route('intern.profile.update'), $this->completionPayload())
             ->assertRedirect(route('intern.profile.show'));
 
         $this->assertSame(1, $token->fresh()->used_count);
         $this->assertSame('completed', $claim->fresh()->status);
+    }
+
+    public function test_profile_completion_rejects_stale_session_version_before_changing_profile_claim_or_quota(): void
+    {
+        [$intern, $applicant, , $token, $claim] = $this->sharedAccount('pending_profile');
+        $oldVersion = (int) $intern->auth_version;
+        $intern->forceFill(['auth_version' => $oldVersion + 1])->save();
+        $applicantFields = [
+            'name', 'nik', 'student_number', 'school_name', 'school_major', 'phone',
+            'address', 'birth_date', 'gender', 'participant_status', 'completed_at',
+        ];
+        $applicantBefore = collect($applicantFields)
+            ->mapWithKeys(fn (string $field): array => [$field => $applicant->getRawOriginal($field)])
+            ->all();
+        $claimFields = ['status', 'completed_at', 'internship_applicant_id'];
+        $claimBefore = collect($claimFields)
+            ->mapWithKeys(fn (string $field): array => [$field => $claim->getRawOriginal($field)])
+            ->all();
+        $tokenBefore = $token->only(['token_hash', 'token_encrypted', 'status', 'quota', 'used_count']);
+
+        $this->withoutMiddleware(EnsureInternAuthenticationVersion::class)
+            ->actingAs($intern, 'intern')
+            ->withSession(['intern_auth_version' => $oldVersion])
+            ->put(route('intern.profile.update'), $this->completionPayload())
+            ->assertForbidden();
+
+        $freshApplicant = $applicant->fresh();
+        $freshClaim = $claim->fresh();
+        $this->assertSame($applicantBefore, collect($applicantFields)
+            ->mapWithKeys(fn (string $field): array => [$field => $freshApplicant->getRawOriginal($field)])
+            ->all());
+        $this->assertSame($claimBefore, collect($claimFields)
+            ->mapWithKeys(fn (string $field): array => [$field => $freshClaim->getRawOriginal($field)])
+            ->all());
+        $this->assertSame($tokenBefore, $token->fresh()->only(array_keys($tokenBefore)));
+        $this->assertSame($oldVersion + 1, (int) $intern->fresh()->auth_version);
+        $this->assertSame(0, InternshipApplicant::query()->where('participant_status', 'active')->count());
+    }
+
+    public function test_completed_claim_rejects_stale_session_after_account_lock_without_changing_data(): void
+    {
+        [$intern, $applicant, , $token, $claim] = $this->sharedAccount('completed');
+        $oldVersion = (int) $intern->auth_version;
+        $intern->forceFill(['auth_version' => $oldVersion + 1])->save();
+
+        $applicantFields = [
+            'name', 'nik', 'student_number', 'school_name', 'school_major', 'phone',
+            'address', 'birth_date', 'gender', 'participant_status', 'completed_at',
+        ];
+        $applicantBefore = collect($applicantFields)
+            ->mapWithKeys(fn (string $field): array => [$field => $applicant->getRawOriginal($field)])
+            ->all();
+        $claimFields = ['status', 'completed_at', 'internship_applicant_id', 'shared_registration_token_id'];
+        $claimBefore = collect($claimFields)
+            ->mapWithKeys(fn (string $field): array => [$field => $claim->getRawOriginal($field)])
+            ->all();
+        $tokenBefore = $token->only(['token_hash', 'status', 'quota', 'used_count']);
+        $tokenCiphertext = $token->getRawOriginal('token_encrypted');
+
+        $response = $this->withoutMiddleware(EnsureInternAuthenticationVersion::class)
+            ->actingAs($intern, 'intern')
+            ->withSession(['intern_auth_version' => $oldVersion])
+            ->put(route('intern.profile.update'), $this->completionPayload());
+
+        $response->assertForbidden()->assertSessionMissing('status');
+
+        $freshApplicant = $applicant->fresh();
+        $freshClaim = $claim->fresh();
+        $freshToken = $token->fresh();
+        $this->assertSame($applicantBefore, collect($applicantFields)
+            ->mapWithKeys(fn (string $field): array => [$field => $freshApplicant->getRawOriginal($field)])
+            ->all());
+        $this->assertSame($claimBefore, collect($claimFields)
+            ->mapWithKeys(fn (string $field): array => [$field => $freshClaim->getRawOriginal($field)])
+            ->all());
+        $this->assertSame($tokenBefore, $freshToken->only(array_keys($tokenBefore)));
+        $this->assertSame($tokenCiphertext, $freshToken->getRawOriginal('token_encrypted'));
+        $this->assertSame($oldVersion + 1, (int) $intern->fresh()->auth_version);
+    }
+
+    public function test_completed_claim_with_current_session_returns_idempotent_result_without_changes(): void
+    {
+        [$intern, $applicant, , $token, $claim] = $this->sharedAccount('completed');
+        $this->post(route('intern.login.store'), [
+            'email' => $intern->email,
+            'password' => 'secret-password',
+        ])->assertRedirect(route('intern.dashboard'));
+        $authVersionBefore = (int) $intern->fresh()->auth_version;
+
+        $applicantFields = [
+            'name', 'nik', 'student_number', 'school_name', 'school_major', 'phone',
+            'address', 'birth_date', 'gender', 'participant_status', 'completed_at',
+        ];
+        $applicantBefore = collect($applicantFields)
+            ->mapWithKeys(fn (string $field): array => [$field => $applicant->getRawOriginal($field)])
+            ->all();
+        $claimFields = ['status', 'completed_at', 'internship_applicant_id', 'shared_registration_token_id'];
+        $claimBefore = collect($claimFields)
+            ->mapWithKeys(fn (string $field): array => [$field => $claim->getRawOriginal($field)])
+            ->all();
+        $tokenBefore = $token->only(['token_hash', 'status', 'quota', 'used_count']);
+        $tokenCiphertext = $token->getRawOriginal('token_encrypted');
+
+        $this->put(route('intern.profile.update'), $this->completionPayload())
+            ->assertRedirect(route('intern.profile.show'))
+            ->assertSessionHas('status', 'Profil Anda sudah lengkap.');
+
+        $freshApplicant = $applicant->fresh();
+        $freshClaim = $claim->fresh();
+        $freshToken = $token->fresh();
+        $this->assertSame($applicantBefore, collect($applicantFields)
+            ->mapWithKeys(fn (string $field): array => [$field => $freshApplicant->getRawOriginal($field)])
+            ->all());
+        $this->assertSame($claimBefore, collect($claimFields)
+            ->mapWithKeys(fn (string $field): array => [$field => $freshClaim->getRawOriginal($field)])
+            ->all());
+        $this->assertSame($tokenBefore, $freshToken->only(array_keys($tokenBefore)));
+        $this->assertSame($tokenCiphertext, $freshToken->getRawOriginal('token_encrypted'));
+        $this->assertSame($authVersionBefore, (int) $intern->fresh()->auth_version);
     }
 
     public function test_akun_legacy_dapat_melihat_dan_mengedit_profil_tanpa_shared_claim(): void
@@ -111,6 +232,8 @@ class InternProfileEditTest extends TestCase
         $this->assertSame('081299999999', $intern->fresh()->phone);
         $this->assertSame('081299999999', $applicant->fresh()->phone);
         $this->assertSame($request->id, $applicant->fresh()->internship_request_id);
+        $this->assertSame('active', $applicant->fresh()->participant_status);
+        $this->assertNull($applicant->fresh()->completed_at);
         $this->assertSame($tokenStatus, $registrationToken->fresh()->status);
         $this->assertDatabaseCount('shared_registration_claims', 0);
     }
@@ -180,6 +303,7 @@ class InternProfileEditTest extends TestCase
 
         $this->assertSame('Nama Sebelumnya', $applicant->fresh()->name);
         $this->assertSame('081200000000', $applicant->fresh()->phone);
+        $this->assertNull($applicant->fresh()->participant_status);
         $this->assertSame('Nama Sebelumnya', $intern->fresh()->name);
         $this->assertSame('081200000000', $intern->fresh()->phone);
     }

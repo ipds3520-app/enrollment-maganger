@@ -10,7 +10,14 @@ abstract class TestCase extends BaseTestCase
 {
     public function actingAs(UserContract $user, $guard = null)
     {
-        return parent::actingAs($user, $guard ?? $this->guardFor($user));
+        $guard ??= $this->guardFor($user);
+        parent::actingAs($user, $guard);
+
+        if ($user instanceof UserIntern && $guard === 'intern') {
+            $this->app['session']->put('intern_auth_version', (int) $user->auth_version);
+        }
+
+        return $this;
     }
 
     public function assertAuthenticatedAs($user, $guard = null)

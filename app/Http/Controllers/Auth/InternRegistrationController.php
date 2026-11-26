@@ -83,6 +83,7 @@ class InternRegistrationController extends Controller
         // New shared-token accounts must enter profile completion immediately.
         // Legacy registrations below retain their previous no-auto-login behavior.
         Auth::guard('intern')->login($account);
+        $request->session()->put('intern_auth_version', (int) $account->auth_version);
         $request->session()->regenerate();
 
         return redirect()

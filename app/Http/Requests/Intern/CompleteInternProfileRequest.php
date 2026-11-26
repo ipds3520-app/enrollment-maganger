@@ -14,7 +14,7 @@ class CompleteInternProfileRequest extends FormRequest
 
         return $internId !== null && SharedRegistrationClaim::query()
             ->where('user_intern_id', $internId)
-            ->where('status', 'pending_profile')
+            ->whereIn('status', ['pending_profile', 'completed'])
             ->exists();
     }
 

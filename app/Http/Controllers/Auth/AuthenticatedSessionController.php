@@ -73,6 +73,10 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate($guard, $role);
 
+        if ($guard === 'intern') {
+            $request->session()->put('intern_auth_version', (int) Auth::guard('intern')->user()->auth_version);
+        }
+
         // SessionGuard::login rotates the session identifier while preserving
         // other guard keys stored in the same browser session.
         return redirect()->route($dashboard);

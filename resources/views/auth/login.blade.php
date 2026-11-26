@@ -9,7 +9,10 @@
     @endif
 
     @if ($errors->any())
-        <div class="alert alert-error">
+        @php
+            $sessionExpired = $errors->first('email') === 'Sesi peserta telah berakhir. Silakan login kembali.';
+        @endphp
+        <div class="alert {{ $sessionExpired ? 'alert-warning' : 'alert-error' }}">
             <ul>
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>

@@ -89,7 +89,7 @@ Route::post('/intern/register', [InternRegistrationController::class, 'store'])
     ->middleware('throttle:6,1')
     ->name('intern.register.store');
 
-Route::middleware(['auth:admin,operator,intern', 'role:admin,admin'])->group(function () {
+Route::middleware(['auth:admin', 'role:admin,admin'])->group(function () {
     Route::get('/admin/dashboard', AdminDashboardController::class)->name('admin.dashboard');
     Route::prefix('/admin/intern-participants')->name('admin.intern-participants.')->group(function () {
         Route::get('/', [InternParticipantController::class, 'index'])->name('index');
@@ -149,7 +149,7 @@ Route::middleware(['auth:admin', 'role:admin,admin'])->prefix('/admin/intern-pas
     Route::post('/{requestId}/reject', [InternPasswordResetRequestController::class, 'reject'])->whereNumber('requestId')->name('reject');
 });
 
-Route::middleware(['auth:operator,admin,intern', 'role:operator,operator'])->group(function () {
+Route::middleware(['auth:operator', 'role:operator,operator'])->group(function () {
     Route::get('/operator/internship-requests', [InternshipRequestController::class, 'index'])
         ->name('operator.internship-requests.index');
     Route::get('/operator/internship-requests/create', [InternshipRequestController::class, 'create'])

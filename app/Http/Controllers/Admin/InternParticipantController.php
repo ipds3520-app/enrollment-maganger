@@ -46,7 +46,7 @@ class InternParticipantController extends Controller
                 });
             })
             ->orderByDesc('users_intern.id')
-            ->paginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return response()->view('admin.intern-participants.index', compact('participants', 'search', 'status'))
@@ -81,7 +81,7 @@ class InternParticipantController extends Controller
                 });
             })
             ->orderByDesc('deleted_at')
-            ->paginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return response()->view('admin.intern-participants.archived-index', compact('participants', 'search'))

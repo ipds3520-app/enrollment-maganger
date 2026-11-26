@@ -67,6 +67,30 @@ class InternProfileEditTest extends TestCase
         $this->assertSame(1, InternshipApplicant::query()->count());
     }
 
+    public function test_menyimpan_profil_intern_tidak_mengubah_session_admin(): void
+    {
+        [$intern] = $this->sharedAccount('completed');
+        $admin = User::factory()->admin()->create(['password' => 'admin-password']);
+
+        $this->post(route('admin.login.store'), [
+            'email' => $admin->email,
+            'password' => 'admin-password',
+        ])->assertRedirect(route('admin.dashboard'));
+
+        $this->post(route('intern.login.store'), [
+            'email' => $intern->email,
+            'password' => 'secret-password',
+        ])->assertRedirect(route('intern.dashboard'));
+
+        $this->put(route('intern.profile.update-details'), $this->editPayload())
+            ->assertRedirect(route('intern.profile.show'));
+
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertAuthenticatedAs($intern, 'intern');
+        $this->get(route('admin.dashboard'))->assertOk()->assertSee('Dashboard Admin');
+        $this->get(route('intern.profile.show'))->assertOk();
+    }
+
     public function test_shared_account_pending_profile_tetap_harus_menyelesaikan_profil_awal(): void
     {
         [$intern, , , $token, $claim] = $this->sharedAccount('pending_profile');

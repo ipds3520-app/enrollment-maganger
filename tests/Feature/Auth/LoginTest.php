@@ -3,8 +3,11 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\Institution;
+use App\Models\InternshipRequest;
 use App\Models\User;
+use App\Models\UserIntern;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Tests\Support\UsesSqliteTestDatabase;
 use Tests\TestCase;
 
@@ -117,5 +120,74 @@ class LoginTest extends TestCase
             ->assertRedirect(route('operator.dashboard'));
         $this->assertAuthenticatedAs($admin, 'admin');
         $this->assertAuthenticatedAs($operator, 'operator');
+    }
+
+    public function test_login_dan_logout_admin_tidak_menghapus_autentikasi_intern(): void
+    {
+        $admin = User::factory()->admin()->create(['password' => 'rahasia123']);
+        $intern = $this->createIntern();
+
+        $this->post(route('intern.login.store'), ['email' => $intern->email, 'password' => 'intern-password'])
+            ->assertRedirect(route('intern.dashboard'));
+
+        $this->post(route('admin.login.store'), ['email' => $admin->email, 'password' => 'rahasia123'])
+            ->assertRedirect(route('admin.dashboard'));
+
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertAuthenticatedAs($intern, 'intern');
+
+        $this->post(route('admin.logout'))
+            ->assertRedirect(route('admin.login'));
+
+        $this->assertGuest('admin');
+        $this->assertAuthenticatedAs($intern, 'intern');
+        $this->get(route('intern.profile.show'))->assertOk();
+    }
+
+    public function test_login_dan_logout_operator_tidak_menghapus_autentikasi_intern(): void
+    {
+        $operator = User::factory()->operator()->create(['password' => 'rahasia123']);
+        $intern = $this->createIntern();
+
+        $this->post(route('intern.login.store'), ['email' => $intern->email, 'password' => 'intern-password'])
+            ->assertRedirect(route('intern.dashboard'));
+
+        $this->post(route('operator.login.store'), ['email' => $operator->email, 'password' => 'rahasia123'])
+            ->assertRedirect(route('operator.dashboard'));
+
+        $this->assertAuthenticatedAs($operator, 'operator');
+        $this->assertAuthenticatedAs($intern, 'intern');
+
+        $this->post(route('operator.logout'))
+            ->assertRedirect(route('operator.login'));
+
+        $this->assertGuest('operator');
+        $this->assertAuthenticatedAs($intern, 'intern');
+        $this->get(route('intern.profile.show'))->assertOk();
+    }
+
+    private function createIntern(): UserIntern
+    {
+        $institution = Institution::factory()->create();
+        $operator = User::factory()->operator($institution)->create();
+        $request = InternshipRequest::query()->create([
+            'institution_id' => $institution->id,
+            'created_by' => $operator->id,
+            'title' => 'Permohonan Uji',
+            'start_date' => '2027-01-10',
+            'end_date' => '2027-03-10',
+        ]);
+        $applicant = $request->applicants()->create([
+            'name' => 'Peserta Uji',
+            'email' => 'peserta.uji@example.test',
+        ]);
+
+        return UserIntern::create([
+            'applicant_id' => $applicant->id,
+            'registration_token_id' => null,
+            'name' => $applicant->name,
+            'email' => $applicant->email,
+            'password' => Hash::make('intern-password'),
+        ]);
     }
 }

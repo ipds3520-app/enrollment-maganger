@@ -53,8 +53,7 @@ class RoleAccessTest extends TestCase
 
         $this->actingAs($operator)
             ->get('/admin/dashboard')
-            ->assertForbidden()
-            ->assertSee('Akses Ditolak');
+            ->assertRedirect(route('admin.login'));
     }
 
     public function test_admin_tidak_dapat_mengakses_dashboard_operator(): void
@@ -63,8 +62,39 @@ class RoleAccessTest extends TestCase
 
         $this->actingAs($admin)
             ->get('/operator/dashboard')
-            ->assertForbidden()
-            ->assertSee('Akses Ditolak');
+            ->assertRedirect(route('operator.login'));
+    }
+
+    public function test_intern_tidak_dapat_mengakses_dashboard_admin_atau_operator(): void
+    {
+        $institution = Institution::factory()->create();
+        $operator = User::factory()->operator($institution)->create();
+        $request = InternshipRequest::query()->create([
+            'institution_id' => $institution->id,
+            'created_by' => $operator->id,
+            'title' => 'Permohonan Uji',
+            'start_date' => '2027-01-10',
+            'end_date' => '2027-03-10',
+        ]);
+        $applicant = $request->applicants()->create([
+            'name' => 'Peserta Uji',
+            'email' => 'peserta.uji@example.test',
+        ]);
+        $intern = UserIntern::create([
+            'applicant_id' => $applicant->id,
+            'registration_token_id' => null,
+            'name' => $applicant->name,
+            'email' => $applicant->email,
+            'password' => 'password',
+        ]);
+
+        $this->actingAs($intern, 'intern')
+            ->get('/admin/dashboard')
+            ->assertRedirect(route('admin.login'));
+
+        $this->actingAs($intern, 'intern')
+            ->get('/operator/dashboard')
+            ->assertRedirect(route('operator.login'));
     }
 
     public function test_pengguna_belum_login_tidak_dapat_membuka_dashboard(): void
@@ -80,7 +110,7 @@ class RoleAccessTest extends TestCase
         $user->forceFill(['role' => 'invalid'])->save();
 
         $this->actingAs($user, 'admin')->get('/admin/dashboard')->assertForbidden();
-        $this->actingAs($user, 'admin')->get('/operator/dashboard')->assertForbidden();
+        $this->actingAs($user, 'admin')->get('/operator/dashboard')->assertRedirect(route('operator.login'));
         $this->actingAs($user, 'admin')->get('/')->assertForbidden();
     }
 

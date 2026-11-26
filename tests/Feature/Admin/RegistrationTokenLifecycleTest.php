@@ -91,22 +91,6 @@ class RegistrationTokenLifecycleTest extends TestCase
         $this->get(route('admin.internship-requests.show', $request))->assertDontSee($issued['token']);
     }
 
-    public function test_admin_dapat_mencabut_token_dan_menerbitkan_pengganti(): void
-    {
-        [$admin, $request, $applicant] = $this->approvedApplicant();
-        $oldToken = $this->token($applicant);
-
-        $this->actingAs($admin)->post(route('admin.internship-requests.registration-tokens.revoke', [$request, $oldToken]))
-            ->assertRedirect(route('admin.internship-requests.show', $request));
-        $this->assertSame('revoked', $oldToken->fresh()->status);
-
-        $this->post(route('admin.internship-requests.registration-tokens.replace', [$request, $applicant]))
-            ->assertOk();
-
-        $this->assertDatabaseCount('registration_tokens', 2);
-        $this->assertSame(1, $applicant->registrationTokens()->where('status', 'active')->count());
-    }
-
     public function test_token_used_tidak_dapat_diganti(): void
     {
         [$admin, $request, $applicant] = $this->approvedApplicant();
@@ -152,17 +136,12 @@ class RegistrationTokenLifecycleTest extends TestCase
             ->post(route('admin.internship-requests.registration-tokens.replace', [$request, $applicant]))
             ->assertForbidden();
         $this->actingAs($operator)
-            ->post(route('admin.internship-requests.registration-tokens.revoke', [$request, $token]))
-            ->assertForbidden();
-        $this->actingAs($operator)
             ->get(route('operator.internship-requests.show', $request))
             ->assertOk()
             ->assertDontSee('Registration Token');
 
         Auth::guard('operator')->logout();
         $this->post(route('admin.internship-requests.registration-tokens.replace', [$request, $applicant]))
-            ->assertRedirect(route('admin.login'));
-        $this->post(route('admin.internship-requests.registration-tokens.revoke', [$request, $token]))
             ->assertRedirect(route('admin.login'));
         $this->assertDatabaseCount('registration_tokens', 1);
     }

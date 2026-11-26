@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Enrollment Magang — Functional Minimalism
+   Pendaftaran Magang — Functional Minimalism
    Design tokens, shared layout, components, and theme support.
    ========================================================================== */
 
@@ -1242,7 +1242,8 @@ label:has(> select[required])::after,
 label:has(> textarea[required])::after,
 .form-group > label:has(+ input[required])::after,
 .form-group > label:has(+ select[required])::after,
-.form-group > label:has(+ textarea[required])::after {
+.form-group > label:has(+ textarea[required])::after,
+.form-group > label.label-required::after {
     content: " *";
     color: var(--danger);
 }
@@ -1339,6 +1340,21 @@ label:has(> textarea[required])::after,
 .form-group input[type="file"] {
     padding: 8px 10px;
     cursor: pointer;
+}
+
+.field input#school_name[readonly] {
+    color: var(--text-muted);
+    opacity: 1;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.readonly-info-label-style {
+    color: var(--text-muted);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
 }
 
 .field input[type="file"]::file-selector-button,

@@ -88,29 +88,4 @@ class SharedRegistrationTokenController extends Controller
             ->with('status', "Kuota peserta diperbarui dari {$oldQuota} menjadi {$savedQuota} peserta.");
     }
 
-    public function revoke(Request $request, int $internshipRequestId): RedirectResponse
-    {
-        abort_unless($request->user()?->isAdmin(), 403);
-
-        DB::transaction(function () use ($internshipRequestId): void {
-            InternshipRequest::query()->lockForUpdate()->findOrFail($internshipRequestId);
-            $token = SharedRegistrationToken::query()
-                ->where('internship_request_id', $internshipRequestId)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            if ($token->status !== 'active') {
-                throw ValidationException::withMessages([
-                    'token' => 'Token tidak lagi aktif dan tidak dapat dicabut.',
-                ]);
-            }
-
-            $token->status = 'revoked';
-            $token->save();
-        });
-
-        return redirect()
-            ->route('admin.internship-requests.show', $internshipRequestId)
-            ->with('status', 'Shared registration token berhasil dicabut. Data peserta yang sudah terdaftar tetap dipertahankan.');
-    }
 }

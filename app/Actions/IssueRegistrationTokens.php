@@ -101,24 +101,6 @@ class IssueRegistrationTokens
         return $this->createForApplicant($applicant);
     }
 
-    public function revoke(RegistrationToken $token): void
-    {
-        if ($token->status !== 'active') {
-            throw ValidationException::withMessages([
-                'token' => 'Hanya token aktif yang dapat dicabut.',
-            ]);
-        }
-
-        if (DB::table('users_intern')->where('applicant_id', $token->applicant_id)->exists()) {
-            throw ValidationException::withMessages([
-                'token' => 'Token terkait akun yang sudah terbentuk tidak dapat dicabut.',
-            ]);
-        }
-
-        $token->status = 'revoked';
-        $token->save();
-    }
-
     /**
      * Persist only the digest and return the plaintext to the caller once.
      *

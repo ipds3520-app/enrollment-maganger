@@ -29,12 +29,12 @@
         </div>
 
         <div class="form-group">
-            <label for="name">Nama lengkap <span>(wajib untuk shared token)</span></label>
+            <label class="label-required" for="name">Nama lengkap <span></span></label>
             <input id="name" name="name" type="text" value="{{ old('name') }}" maxlength="100" autocomplete="name" aria-invalid="{{ $errors->has('name') ? 'true' : 'false' }}">
         </div>
 
         <div class="form-group">
-            <label for="email">Email <span>(wajib untuk shared token)</span></label>
+            <label class="label-required" for="email">Email <span></span></label>
             <input id="email" name="email" type="email" value="{{ old('email') }}" maxlength="150" autocomplete="email" aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}">
         </div>
 

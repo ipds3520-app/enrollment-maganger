@@ -6,8 +6,6 @@ use App\Actions\IssueRegistrationTokens;
 use App\Http\Controllers\Controller;
 use App\Models\InternshipApplicant;
 use App\Models\InternshipRequest;
-use App\Models\RegistrationToken;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -35,31 +33,6 @@ class RegistrationTokenController extends Controller
         });
 
         return $this->issuedResponse($internshipRequest, $issuedTokens, true);
-    }
-
-    public function revoke(
-        int $internshipRequestId,
-        int $registrationTokenId,
-        IssueRegistrationTokens $issueRegistrationTokens,
-    ): RedirectResponse {
-        DB::transaction(function () use ($internshipRequestId, $registrationTokenId, $issueRegistrationTokens): void {
-            $internshipRequest = InternshipRequest::query()
-                ->lockForUpdate()
-                ->findOrFail($internshipRequestId);
-
-            $this->ensureApproved($internshipRequest);
-
-            $token = RegistrationToken::query()
-                ->whereHas('applicant', fn ($query) => $query->where('internship_request_id', $internshipRequest->getKey()))
-                ->lockForUpdate()
-                ->findOrFail($registrationTokenId);
-
-            $issueRegistrationTokens->revoke($token);
-        });
-
-        return redirect()
-            ->route('admin.internship-requests.show', $internshipRequestId)
-            ->with('status', 'Registration token berhasil dicabut.');
     }
 
     /** @param list<array{applicant: InternshipApplicant, token: string, expires_at: Carbon}> $issuedTokens */

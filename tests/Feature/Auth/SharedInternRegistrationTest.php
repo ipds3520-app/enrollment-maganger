@@ -299,10 +299,9 @@ class SharedInternRegistrationTest extends TestCase
 
     public function test_token_yang_dicabut_atau_habis_ditolak(): void
     {
-        [, $admin, $plaintext] = $this->approvedRequest(1);
+        [, , $plaintext] = $this->approvedRequest(1);
         $request = InternshipRequest::query()->where('participant_count', 1)->firstOrFail();
-        $this->actingAs($admin)->post(route('admin.internship-requests.shared-registration-token.revoke', $request))
-            ->assertRedirect(route('admin.internship-requests.show', $request));
+        SharedRegistrationToken::query()->where('internship_request_id', $request->id)->update(['status' => 'revoked']);
         $this->register($plaintext, 'revoked@example.test')->assertSessionHasErrors('token');
         $this->assertDatabaseCount('users_intern', 0);
         $this->assertSame('revoked', SharedRegistrationToken::query()->sole()->status);

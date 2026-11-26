@@ -212,12 +212,6 @@
                                             @if ($token->used_at)
                                                 <span>Digunakan: {{ $token->used_at->format('d/m/Y H:i') }}</span>
                                             @endif
-                                            @if ($token->status === 'active' && ! $hasAccount)
-                                                <form method="POST" action="{{ route('admin.internship-requests.registration-tokens.revoke', [$internshipRequest, $token]) }}">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-outline-danger btn-sm">Cabut token</button>
-                                                </form>
-                                            @endif
                                         </div>
                                     @empty
                                         <p class="muted">Belum ada token untuk peserta ini.</p>
@@ -351,12 +345,6 @@
                     </div>
                 </form>
 
-                @if ($sharedToken->status === 'active')
-                    <form method="POST" action="{{ route('admin.internship-requests.shared-registration-token.revoke', $internshipRequest) }}">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-danger btn-sm">Cabut shared token</button>
-                    </form>
-                @endif
             </section>
         @endif
 

@@ -31,7 +31,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('intern.profile.update') }}" data-require-complete-nik>
+    <form method="POST" action="{{ route('intern.profile.update') }}">
         @csrf
         @method('PUT')
 
@@ -80,7 +80,7 @@
                             required
                             @error('nik') aria-invalid="true" @enderror
                         >
-                        <span id="nik-progress" class="field-hint" aria-live="polite">Masukkan tepat 16 digit angka untuk membuka kolom berikutnya.</span>
+                        <span class="field-hint">NIK harus terdiri dari tepat 16 digit angka sebelum data dapat disimpan.</span>
                         @error('nik') <span class="field-error">{{ $message }}</span> @enderror
                     </div>
 
@@ -103,6 +103,7 @@
                             id="school_name"
                             type="text"
                             value="{{ $schoolName }}"
+                            class="readonly-info-label-style"
                             maxlength="150"
                             readonly
                             aria-readonly="true"

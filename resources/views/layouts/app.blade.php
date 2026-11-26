@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <title>@yield('title', 'Dashboard') &mdash; {{ config('app.name', 'Enrollment Magang') }}</title>
+    <title>@yield('title', 'Dashboard') &mdash; {{ config('app.name', 'Pendaftaran Magang') }}</title>
 
     @include('layouts.partials.theme-init')
 
@@ -94,7 +94,7 @@
                         @include('layouts.partials.icon', ['name' => 'graduation-cap'])
                     </span>
                     <span class="brand-text">
-                        <span class="brand-name">{{ config('app.name', 'Enrollment Magang') }}</span>
+                        <span class="brand-name">Pendaftaran Magang</span>
                         <span class="brand-sub">Sistem Administrasi</span>
                     </span>
                 </a>

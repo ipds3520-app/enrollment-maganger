@@ -40,15 +40,15 @@
                 <div class="detail-grid">
                     <div class="detail-item">
                         <p class="detail-label">Email</p>
-                        <p class="detail-value">{{ $intern->email }}</p>
+                        <p class="detail-value readonly-info-label-style">{{ $intern->email }}</p>
                     </div>
                     <div class="detail-item">
                         <p class="detail-label">NIK</p>
-                        <p class="detail-value">{{ $applicant->nik ?: '—' }}</p>
+                        <p class="detail-value readonly-info-label-style">{{ $applicant->nik ?: '—' }}</p>
                     </div>
                     <div class="detail-item">
                         <p class="detail-label">Asal kampus/sekolah</p>
-                        <p class="detail-value">{{ $applicant->school_name ?: '—' }}</p>
+                        <p class="detail-value readonly-info-label-style">{{ $applicant->school_name ?: '—' }}</p>
                     </div>
                 </div>
             </section>

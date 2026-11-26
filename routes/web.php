@@ -100,12 +100,6 @@ Route::middleware(['auth:admin,operator,intern', 'role:admin,admin'])->group(fun
     Route::post('/admin/internship-requests/{internshipRequestId}/applicants/{applicantId}/registration-token/replace', [RegistrationTokenController::class, 'replace'])
         ->whereNumber(['internshipRequestId', 'applicantId'])
         ->name('admin.internship-requests.registration-tokens.replace');
-    Route::post('/admin/internship-requests/{internshipRequestId}/registration-tokens/{registrationTokenId}/revoke', [RegistrationTokenController::class, 'revoke'])
-        ->whereNumber(['internshipRequestId', 'registrationTokenId'])
-        ->name('admin.internship-requests.registration-tokens.revoke');
-    Route::post('/admin/internship-requests/{internshipRequestId}/shared-registration-token/revoke', [SharedRegistrationTokenController::class, 'revoke'])
-        ->whereNumber('internshipRequestId')
-        ->name('admin.internship-requests.shared-registration-token.revoke');
     Route::put('/admin/internship-requests/{internshipRequestId}/shared-registration-token/quota', [SharedRegistrationTokenController::class, 'updateQuota'])
         ->whereNumber('internshipRequestId')
         ->name('admin.internship-requests.shared-registration-token.quota');

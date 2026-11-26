@@ -52,7 +52,7 @@
             </div>
 
             <div class="form-group">
-                <label for="institution_address">Alamat Institusi (Wajib)</label>
+                <label class="label-required" for="institution_address">Alamat Institusi</label>
                 <textarea
                     id="institution_address"
                     name="institution_address"
@@ -75,7 +75,7 @@
             </div>
 
             <div class="form-group">
-                <label for="institution_email">Email Institusi (opsional)</label>
+                <label class="label-required" for="institution_email">Email Institusi</label>
                 <input
                     id="institution_email"
                     type="email"

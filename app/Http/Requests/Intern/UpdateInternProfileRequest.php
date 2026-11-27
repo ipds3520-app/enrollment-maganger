@@ -36,6 +36,7 @@ class UpdateInternProfileRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:100'],
+            'nik' => ['required', 'digits:16'],
             'student_number' => [
                 'required',
                 'string',
@@ -49,7 +50,6 @@ class UpdateInternProfileRequest extends FormRequest
             'address' => ['required', 'string', 'max:2000'],
             'birth_date' => ['required', 'date', 'before:today'],
             'gender' => ['required', Rule::in(['Laki-laki', 'Perempuan'])],
-            'nik' => ['prohibited'],
             'email' => ['prohibited'],
             'school_name' => ['prohibited'],
             'applicant_id' => ['prohibited'],
@@ -59,6 +59,15 @@ class UpdateInternProfileRequest extends FormRequest
             'shared_registration_token_id' => ['prohibited'],
             'shared_registration_claim_id' => ['prohibited'],
             'used_count' => ['prohibited'],
+        ];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'nik.required' => 'NIK wajib diisi.',
+            'nik.digits' => 'NIK harus terdiri dari tepat 16 angka tanpa huruf atau simbol.',
         ];
     }
 }

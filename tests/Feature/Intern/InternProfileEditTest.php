@@ -39,10 +39,16 @@ class InternProfileEditTest extends TestCase
             ->get(route('intern.profile.edit'))
             ->assertOk()
             ->assertViewIs('intern.profile.edit-account')
-            ->assertSee('Edit Data Pribadi');
+            ->assertSee('Edit Data Pribadi')
+            ->assertSee('name="nik"', false)
+            ->assertDontSee('name="email"', false)
+            ->assertDontSee('name="school_name"', false)
+            ->assertSee($intern->email);
 
         $this->actingAs($intern, 'intern')
-            ->put(route('intern.profile.update-details'), $this->editPayload())
+            ->put(route('intern.profile.update-details'), $this->editPayload([
+                'nik' => '1234567890123456',
+            ]))
             ->assertRedirect(route('intern.profile.show'))
             ->assertSessionHas('status');
 
@@ -57,7 +63,7 @@ class InternProfileEditTest extends TestCase
         $this->assertSame('Alamat terbaru', $applicant->fresh()->address);
         $this->assertSame('2004-05-06', $applicant->fresh()->birth_date->format('Y-m-d'));
         $this->assertSame('Laki-laki', $applicant->fresh()->gender);
-        $this->assertSame('3201234567890123', $applicant->fresh()->nik);
+        $this->assertSame('1234567890123456', $applicant->fresh()->nik);
         $this->assertSame('institusi-asal', $applicant->fresh()->school_name);
         $this->assertSame('peserta@example.test', $intern->fresh()->email);
         $this->assertSame($tokenSnapshot, $token->fresh()->only(array_keys($tokenSnapshot)));
@@ -248,11 +254,14 @@ class InternProfileEditTest extends TestCase
             ->assertViewIs('intern.profile.edit-account');
 
         $this->actingAs($intern, 'intern')
-            ->put(route('intern.profile.update-details'), $this->editPayload())
+            ->put(route('intern.profile.update-details'), $this->editPayload([
+                'nik' => '1234567890123456',
+            ]))
             ->assertRedirect(route('intern.profile.show'));
 
         $this->assertSame('Nama Baru', $intern->fresh()->name);
         $this->assertSame('Nama Baru', $applicant->fresh()->name);
+        $this->assertSame('1234567890123456', $applicant->fresh()->nik);
         $this->assertSame('081299999999', $intern->fresh()->phone);
         $this->assertSame('081299999999', $applicant->fresh()->phone);
         $this->assertSame($request->id, $applicant->fresh()->internship_request_id);
@@ -283,7 +292,20 @@ class InternProfileEditTest extends TestCase
         $this->assertSame($applicant->student_number, $applicant->fresh()->student_number);
     }
 
-    public function test_nik_email_institusi_dan_identitas_kepemilikan_ditolak_dari_request_edit(): void
+    public function test_nik_wajib_16_digit_dan_menolak_nilai_tidak_valid(): void
+    {
+        [$intern, $applicant] = $this->sharedAccount('completed');
+
+        foreach (['', '123456789012345', '123456789012345a'] as $invalidNik) {
+            $this->actingAs($intern, 'intern')
+                ->put(route('intern.profile.update-details'), $this->editPayload(['nik' => $invalidNik]))
+                ->assertSessionHasErrors('nik');
+
+            $this->assertSame('3201234567890123', $applicant->fresh()->nik);
+        }
+    }
+
+    public function test_email_institusi_dan_identitas_kepemilikan_ditolak_dari_request_edit(): void
     {
         [$intern, $applicant] = $this->sharedAccount('completed');
         $otherApplicant = $applicant->internshipRequest()->firstOrFail()->applicants()->create([
@@ -294,13 +316,12 @@ class InternProfileEditTest extends TestCase
 
         $this->actingAs($intern, 'intern')
             ->put(route('intern.profile.update-details'), $this->editPayload([
-                'nik' => '0000000000000000',
                 'email' => 'attacker@example.test',
                 'school_name' => 'Institusi Lain',
                 'applicant_id' => $otherApplicant->id,
                 'internship_request_id' => $applicant->internship_request_id + 100,
             ]))
-            ->assertSessionHasErrors(['nik', 'email', 'school_name', 'applicant_id', 'internship_request_id']);
+            ->assertSessionHasErrors(['email', 'school_name', 'applicant_id', 'internship_request_id']);
 
         $this->assertSame('3201234567890123', $applicant->fresh()->nik);
         $this->assertSame('institusi-asal', $applicant->fresh()->school_name);
@@ -319,13 +340,16 @@ class InternProfileEditTest extends TestCase
         $this->withoutExceptionHandling();
 
         try {
-            $this->actingAs($intern, 'intern')->put(route('intern.profile.update-details'), $this->editPayload());
+            $this->actingAs($intern, 'intern')->put(route('intern.profile.update-details'), $this->editPayload([
+                'nik' => '1234567890123456',
+            ]));
             $this->fail('Expected account sync failure was not thrown.');
         } catch (RuntimeException $exception) {
             $this->assertSame('Simulated account sync failure.', $exception->getMessage());
         }
 
         $this->assertSame('Nama Sebelumnya', $applicant->fresh()->name);
+        $this->assertSame('3201234567890123', $applicant->fresh()->nik);
         $this->assertSame('081200000000', $applicant->fresh()->phone);
         $this->assertNull($applicant->fresh()->participant_status);
         $this->assertSame('Nama Sebelumnya', $intern->fresh()->name);
@@ -435,6 +459,7 @@ class InternProfileEditTest extends TestCase
     {
         return array_replace([
             'name' => 'Nama Baru',
+            'nik' => '3201234567890123',
             'student_number' => 'NIM-BARU-01',
             'school_major' => 'Teknik Sipil',
             'phone' => '081299999999',

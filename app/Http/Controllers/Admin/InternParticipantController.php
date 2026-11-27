@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\BulkUpdateInternParticipantStatus;
 use App\Http\Requests\Admin\UpdateInternParticipant;
 use App\Http\Requests\Admin\UpdateInternParticipantStatus;
 use App\Models\InternshipApplicant;
@@ -148,7 +149,7 @@ class InternParticipantController extends Controller
                     ->whereIn('id', $applicantIds)
                     ->orderBy('id')
                     ->lockForUpdate()
-                    ->get(['id']);
+                    ->get(['id', 'participant_status']);
 
                 if ($lockedApplicants->count() !== $applicantIds->count()) {
                     throw ValidationException::withMessages([
@@ -178,6 +179,18 @@ class InternParticipantController extends Controller
                     }
                 }
 
+                $applicantsById = $lockedApplicants->keyBy('id');
+
+                foreach ($lockedInterns as $intern) {
+                    $applicant = $applicantsById->get($intern->applicant_id);
+
+                    if ($applicant?->participant_status !== 'completed') {
+                        throw ValidationException::withMessages([
+                            'user_intern_ids' => 'Arsip massal hanya dapat dilakukan jika seluruh peserta berstatus Selesai. Tidak ada peserta yang diarsipkan.',
+                        ]);
+                    }
+                }
+
                 foreach ($lockedInterns as $intern) {
                     $this->archiveAccount($intern);
                 }
@@ -193,6 +206,108 @@ class InternParticipantController extends Controller
 
         return redirect()->route('admin.intern-participants.index', $this->listQuery($request, true))
             ->with('status', count($ids).' peserta berhasil diarsipkan. Data profil dan riwayat tetap tersimpan.');
+    }
+
+    public function bulkUpdateLifecycle(BulkUpdateInternParticipantStatus $request): RedirectResponse
+    {
+        $validated = $request->validated();
+        $ids = array_map('intval', $validated['user_intern_ids']);
+        $status = $validated['participant_status'];
+        $adminId = $request->user('admin')->getKey();
+
+        try {
+            $updatedCount = DB::transaction(function () use ($ids, $status, $adminId): int {
+                $selected = UserIntern::query()
+                    ->whereIn('id', $ids)
+                    ->orderBy('id')
+                    ->get(['id', 'applicant_id']);
+
+                if ($selected->count() !== count($ids)) {
+                    throw ValidationException::withMessages([
+                        'user_intern_ids' => 'Satu atau lebih peserta sudah diarsipkan atau tidak aktif. Tidak ada perubahan yang disimpan.',
+                    ]);
+                }
+
+                $applicantIds = $selected->pluck('applicant_id')->unique()->sort()->values();
+                $lockedApplicants = InternshipApplicant::query()
+                    ->whereIn('id', $applicantIds)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($lockedApplicants->count() !== $applicantIds->count()) {
+                    throw ValidationException::withMessages([
+                        'user_intern_ids' => 'Profil salah satu peserta tidak tersedia. Tidak ada perubahan yang disimpan.',
+                    ]);
+                }
+
+                $lockedInterns = UserIntern::query()
+                    ->whereIn('id', $ids)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($lockedInterns->count() !== count($ids)) {
+                    throw ValidationException::withMessages([
+                        'user_intern_ids' => 'Satu atau lebih peserta sudah berubah status. Tidak ada perubahan yang disimpan.',
+                    ]);
+                }
+
+                $expectedApplicants = $selected->pluck('applicant_id', 'id');
+                $applicantsById = $lockedApplicants->keyBy('id');
+
+                foreach ($lockedInterns as $intern) {
+                    if ((int) $intern->applicant_id !== (int) $expectedApplicants[$intern->getKey()]) {
+                        throw ValidationException::withMessages([
+                            'user_intern_ids' => 'Relasi profil salah satu peserta berubah. Tidak ada perubahan yang disimpan.',
+                        ]);
+                    }
+                }
+
+                $changedCount = 0;
+
+                foreach ($lockedInterns as $intern) {
+                    $applicant = $applicantsById->get($intern->applicant_id);
+
+                    if ($applicant->participant_status === $status) {
+                        continue;
+                    }
+
+                    $oldStatus = $applicant->participant_status;
+                    $changedAt = now();
+
+                    $applicant->forceFill([
+                        'participant_status' => $status,
+                        'completed_at' => $status === 'completed' ? $changedAt : null,
+                    ])->save();
+
+                    $applicant->statusHistories()->create([
+                        'old_status' => $oldStatus,
+                        'new_status' => $status,
+                        'changed_by' => $adminId,
+                        'changed_at' => $changedAt,
+                    ]);
+
+                    $changedCount++;
+                }
+
+                return $changedCount;
+            });
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return redirect()->route('admin.intern-participants.index', $this->listQuery($request, true))
+                ->withErrors(['user_intern_ids' => 'Batch gagal diproses. Tidak ada peserta yang diubah; silakan coba kembali.']);
+        }
+
+        $message = $updatedCount === 0
+            ? 'Status peserta terpilih sudah sesuai. Tidak ada riwayat baru.'
+            : $updatedCount.' status peserta berhasil diperbarui.';
+
+        return redirect()->route('admin.intern-participants.index', $this->listQuery($request, true))
+            ->with('status', $message);
     }
 
     public function restore(int $userInternId): RedirectResponse

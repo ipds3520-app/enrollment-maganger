@@ -64,6 +64,7 @@
                         <input
                             id="start_date"
                             type="date"
+                            class="date-input-polished"
                             name="start_date"
                             value="{{ old('start_date') }}"
                             min="{{ now()->toDateString() }}"
@@ -80,6 +81,7 @@
                         <input
                             id="end_date"
                             type="date"
+                            class="date-input-polished"
                             name="end_date"
                             value="{{ old('end_date') }}"
                             min="{{ now()->toDateString() }}"

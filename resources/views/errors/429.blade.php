@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <title>Terlalu Banyak Permintaan &mdash; {{ config('app.name', 'Pendaftaran Magang') }}</title>
+    @include('layouts.partials.favicon')
 
     @include('layouts.partials.theme-init')
 

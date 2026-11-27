@@ -6,6 +6,7 @@
     <meta name="color-scheme" content="light dark">
     <meta name="description" content="Sistem Pendaftaran Magang BPS untuk memfasilitasi pengajuan dan pengelolaan permohonan magang.">
     <title>Sistem Pendaftaran Magang BPS</title>
+    @include('layouts.partials.favicon')
 
     @include('layouts.partials.theme-init')
 

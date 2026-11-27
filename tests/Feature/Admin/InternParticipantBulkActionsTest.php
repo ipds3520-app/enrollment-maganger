@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Institution;
 use App\Models\InternPasswordResetRequest;
+use App\Models\InternshipApplicant;
 use App\Models\RegistrationToken;
 use App\Models\SharedRegistrationClaim;
 use App\Models\SharedRegistrationToken;
@@ -123,7 +124,7 @@ class InternParticipantBulkActionsTest extends TestCase
 
     public function test_bulk_archive_rolls_back_the_whole_batch_when_one_account_update_fails(): void
     {
-        $first = $this->participant('active');
+        $first = $this->participant('completed');
         $second = $this->participant('completed');
         $admin = User::factory()->admin()->create();
         $before = collect([$first, $second])->mapWithKeys(fn (array $participant): array => [
@@ -184,6 +185,203 @@ class InternParticipantBulkActionsTest extends TestCase
             'user_intern_ids' => range(10001, 10101),
         ])->assertSessionHasErrors('user_intern_ids');
         $this->assertDatabaseHas('users_intern', ['id' => $active['intern']->getKey(), 'deleted_at' => null]);
+    }
+
+    public function test_admin_can_bulk_update_lifecycle_and_records_only_changed_statuses(): void
+    {
+        $active = $this->participant('active');
+        $completed = $this->participant('completed');
+        $unset = $this->participant(null);
+        $admin = User::factory()->admin()->create();
+        $completedHistoryCount = $completed['applicant']->statusHistories()->count();
+        $internSnapshots = collect([$active, $completed, $unset])->mapWithKeys(fn (array $participant): array => [
+            $participant['intern']->getKey() => [
+                'auth_version' => (int) $participant['intern']->auth_version,
+                'remember_token' => $participant['intern']->getRememberToken(),
+                'token_hash' => $participant['token']->token_hash,
+                'token_encrypted' => $participant['token']->token_encrypted,
+                'used_count' => $participant['token']->used_count,
+            ],
+        ])->all();
+
+        $this->actingAs($admin)
+            ->post(route('admin.intern-participants.bulk-lifecycle.update'), [
+                'user_intern_ids' => [$active['intern']->getKey(), $completed['intern']->getKey(), $unset['intern']->getKey()],
+                'participant_status' => 'completed',
+            ])
+            ->assertRedirect(route('admin.intern-participants.index', ['page' => 1]))
+            ->assertSessionHas('status', '2 status peserta berhasil diperbarui.');
+
+        foreach ([$active, $completed, $unset] as $participant) {
+            $freshApplicant = $participant['applicant']->fresh();
+            $this->assertSame('completed', $freshApplicant->participant_status);
+            $this->assertNotNull($freshApplicant->completed_at);
+            $freshIntern = $participant['intern']->fresh();
+            $before = $internSnapshots[$freshIntern->getKey()];
+            $this->assertSame($before['auth_version'], (int) $freshIntern->auth_version);
+            $this->assertSame($before['remember_token'], $freshIntern->getRememberToken());
+            $this->assertSame($before['token_hash'], $participant['token']->fresh()->token_hash);
+            $this->assertSame($before['token_encrypted'], $participant['token']->fresh()->token_encrypted);
+            $this->assertSame($before['used_count'], $participant['token']->fresh()->used_count);
+        }
+
+        $this->assertSame(1, $active['applicant']->statusHistories()->count());
+        $this->assertSame($completedHistoryCount, $completed['applicant']->statusHistories()->count());
+        $this->assertSame(1, $unset['applicant']->statusHistories()->count());
+        $this->assertDatabaseHas('internship_participant_status_histories', [
+            'applicant_id' => $active['applicant']->getKey(),
+            'old_status' => 'active',
+            'new_status' => 'completed',
+            'changed_by' => $admin->getKey(),
+        ]);
+        $this->assertDatabaseHas('internship_participant_status_histories', [
+            'applicant_id' => $unset['applicant']->getKey(),
+            'old_status' => null,
+            'new_status' => 'completed',
+            'changed_by' => $admin->getKey(),
+        ]);
+
+        $this->post(route('admin.intern-participants.bulk-lifecycle.update'), [
+            'user_intern_ids' => [$active['intern']->getKey()],
+            'participant_status' => 'active',
+        ])->assertSessionHas('status', '1 status peserta berhasil diperbarui.');
+        $this->assertSame('active', $active['applicant']->fresh()->participant_status);
+        $this->assertNull($active['applicant']->fresh()->completed_at);
+        $this->assertSame('completed', $completed['applicant']->fresh()->participant_status);
+
+        $refreshedList = $this->get(route('admin.intern-participants.index'))->assertOk();
+        $this->assertStringContainsString('data-status-panel-toggle hidden', $refreshedList->getContent());
+        $this->assertStringContainsString('data-status-panel hidden', $refreshedList->getContent());
+        preg_match_all('/<input\b[^>]*\bdata-select-item\b[^>]*>/', $refreshedList->getContent(), $checkboxes);
+        $this->assertNotEmpty($checkboxes[0]);
+        foreach ($checkboxes[0] as $checkbox) {
+            $this->assertStringNotContainsString(' checked', $checkbox);
+        }
+    }
+
+    public function test_bulk_lifecycle_no_op_does_not_create_history(): void
+    {
+        $completed = $this->participant('completed');
+        $admin = User::factory()->admin()->create();
+        $completedAt = $completed['applicant']->completed_at->toDateTimeString();
+        $historyCount = $completed['applicant']->statusHistories()->count();
+
+        $this->actingAs($admin)
+            ->post(route('admin.intern-participants.bulk-lifecycle.update'), [
+                'user_intern_ids' => [$completed['intern']->getKey()],
+                'participant_status' => 'completed',
+            ])
+            ->assertSessionHas('status', 'Status peserta terpilih sudah sesuai. Tidak ada riwayat baru.');
+
+        $this->assertSame($historyCount, $completed['applicant']->statusHistories()->count());
+        $this->assertSame($completedAt, $completed['applicant']->fresh()->completed_at->toDateTimeString());
+    }
+
+    public function test_bulk_lifecycle_rejects_duplicate_missing_over_limit_ids_and_invalid_status(): void
+    {
+        $participant = $this->participant('active');
+        $admin = User::factory()->admin()->create();
+        $route = route('admin.intern-participants.bulk-lifecycle.update');
+        $payload = [
+            'user_intern_ids' => [$participant['intern']->getKey()],
+            'participant_status' => 'completed',
+        ];
+
+        $this->actingAs($admin)
+            ->from(route('admin.intern-participants.index'))
+            ->post($route, [
+                ...$payload,
+                'user_intern_ids' => [$participant['intern']->getKey(), $participant['intern']->getKey()],
+            ])
+            ->assertSessionHasErrors('user_intern_ids.1');
+        $this->assertSame('active', $participant['applicant']->fresh()->participant_status);
+        $this->assertNull($participant['applicant']->fresh()->completed_at);
+        $this->assertSame(0, $participant['applicant']->statusHistories()->count());
+
+        $this->post($route, [
+            ...$payload,
+            'user_intern_ids' => [$participant['intern']->getKey(), 999999],
+        ])->assertSessionHasErrors('user_intern_ids.1');
+        $this->assertSame('active', $participant['applicant']->fresh()->participant_status);
+        $this->assertNull($participant['applicant']->fresh()->completed_at);
+        $this->assertSame(0, $participant['applicant']->statusHistories()->count());
+
+        $this->post($route, [
+            ...$payload,
+            'user_intern_ids' => array_merge([$participant['intern']->getKey()], range(10000, 10099)),
+        ])->assertSessionHasErrors('user_intern_ids');
+        $this->assertSame('active', $participant['applicant']->fresh()->participant_status);
+        $this->assertNull($participant['applicant']->fresh()->completed_at);
+        $this->assertSame(0, $participant['applicant']->statusHistories()->count());
+
+        $this->post($route, [
+            ...$payload,
+            'participant_status' => 'archived',
+        ])->assertSessionHasErrors('participant_status');
+        $this->assertSame('active', $participant['applicant']->fresh()->participant_status);
+        $this->assertNull($participant['applicant']->fresh()->completed_at);
+        $this->assertSame(0, $participant['applicant']->statusHistories()->count());
+    }
+
+    public function test_bulk_lifecycle_rolls_back_all_status_changes_when_a_later_update_fails(): void
+    {
+        $first = $this->participant('active');
+        $second = $this->participant(null);
+        $admin = User::factory()->admin()->create();
+        $firstHistoryCount = $first['applicant']->statusHistories()->count();
+        $secondHistoryCount = $second['applicant']->statusHistories()->count();
+        $failureInjected = false;
+
+        Event::listen('eloquent.updating: '.InternshipApplicant::class, function (InternshipApplicant $applicant) use ($second, &$failureInjected): void {
+            if ($applicant->is($second['applicant'])) {
+                $failureInjected = true;
+                throw new RuntimeException('Simulated lifecycle update failure.');
+            }
+        });
+
+        $this->actingAs($admin)
+            ->post(route('admin.intern-participants.bulk-lifecycle.update'), [
+                'user_intern_ids' => [$first['intern']->getKey(), $second['intern']->getKey()],
+                'participant_status' => 'completed',
+            ])
+            ->assertSessionHasErrors('user_intern_ids');
+
+        $this->assertTrue($failureInjected);
+        $this->assertSame('active', $first['applicant']->fresh()->participant_status);
+        $this->assertNull($first['applicant']->fresh()->completed_at);
+        $this->assertNull($second['applicant']->fresh()->participant_status);
+        $this->assertNull($second['applicant']->fresh()->completed_at);
+        $this->assertSame($firstHistoryCount, $first['applicant']->statusHistories()->count());
+        $this->assertSame($secondHistoryCount, $second['applicant']->statusHistories()->count());
+    }
+
+    public function test_bulk_archive_rejects_active_or_unset_participants_even_when_request_is_forged(): void
+    {
+        $active = $this->participant('active');
+        $unset = $this->participant(null);
+        $completed = $this->participant('completed');
+        $admin = User::factory()->admin()->create();
+        $before = collect([$active, $unset, $completed])->mapWithKeys(fn (array $participant): array => [
+            $participant['intern']->getKey() => [
+                'auth_version' => (int) $participant['intern']->fresh()->auth_version,
+                'remember_token' => $participant['intern']->fresh()->getRememberToken(),
+            ],
+        ])->all();
+
+        foreach ([[$active, $completed], [$unset, $completed]] as $selection) {
+            $this->actingAs($admin)
+                ->post(route('admin.intern-participants.bulk-archive'), [
+                    'user_intern_ids' => array_map(fn (array $participant): int => $participant['intern']->getKey(), $selection),
+                ])
+                ->assertSessionHasErrors('user_intern_ids');
+        }
+
+        foreach ([$active, $unset, $completed] as $participant) {
+            $fresh = UserIntern::query()->findOrFail($participant['intern']->getKey());
+            $this->assertNull($fresh->deleted_at);
+            $this->assertSame($before[$fresh->getKey()]['auth_version'], (int) $fresh->auth_version);
+            $this->assertSame($before[$fresh->getKey()]['remember_token'], $fresh->getRememberToken());
+        }
     }
 
     public function test_admin_bulk_restore_preserves_account_token_claim_lifecycle_and_filters(): void
@@ -355,9 +553,13 @@ class InternParticipantBulkActionsTest extends TestCase
 
         $this->actingAs($operator)
             ->post(route('admin.intern-participants.bulk-archive'), ['user_intern_ids' => [$participant['intern']->getKey()]])
-            ->assertForbidden();
+            ->assertRedirect(route('admin.login'));
+        $this->post(route('admin.intern-participants.bulk-lifecycle.update'), [
+            'user_intern_ids' => [$participant['intern']->getKey()],
+            'participant_status' => 'completed',
+        ])->assertRedirect(route('admin.login'));
         $this->post(route('admin.intern-participants.archived.bulk-restore'), ['user_intern_ids' => [$participant['intern']->getKey()]])
-            ->assertForbidden();
+            ->assertRedirect(route('admin.login'));
 
         Auth::guard('admin')->logout();
         Auth::guard('operator')->logout();
@@ -365,36 +567,47 @@ class InternParticipantBulkActionsTest extends TestCase
 
         $this->actingAs($participant['intern'])
             ->post(route('admin.intern-participants.bulk-archive'), ['user_intern_ids' => [$participant['intern']->getKey()]])
-            ->assertForbidden();
+            ->assertRedirect(route('admin.login'));
+        $this->post(route('admin.intern-participants.bulk-lifecycle.update'), [
+            'user_intern_ids' => [$participant['intern']->getKey()],
+            'participant_status' => 'completed',
+        ])->assertRedirect(route('admin.login'));
         $this->post(route('admin.intern-participants.archived.bulk-restore'), ['user_intern_ids' => [$participant['intern']->getKey()]])
-            ->assertForbidden();
+            ->assertRedirect(route('admin.login'));
     }
 
     public function test_bulk_select_only_contains_rows_from_current_paginated_filtered_page(): void
     {
         $ids = [];
         for ($index = 0; $index < 16; $index++) {
-            $ids[] = $this->participant('active')['intern']->getKey();
+            $ids[] = $this->participant('completed')['intern']->getKey();
         }
 
         $firstPage = $this->actingAs(User::factory()->admin()->create())
-            ->get(route('admin.intern-participants.index', ['q' => 'Peserta', 'status' => 'active', 'page' => 1]))
+            ->get(route('admin.intern-participants.index', ['q' => 'Peserta', 'status' => 'completed', 'page' => 1]))
             ->assertOk();
-        $this->assertSame(15, substr_count($firstPage->getContent(), 'name="user_intern_ids[]"'));
+        $this->assertSame(10, substr_count($firstPage->getContent(), 'name="user_intern_ids[]"'));
         $this->assertStringContainsString('id="bulk-select-all"', $firstPage->getContent());
         $this->assertStringContainsString('id="bulk-selection-count"', $firstPage->getContent());
-        $this->assertStringContainsString('data-bulk-submit disabled', $firstPage->getContent());
+        $this->assertStringContainsString('data-status-panel-toggle hidden', $firstPage->getContent());
+        $this->assertStringContainsString('data-status-panel hidden', $firstPage->getContent());
+        $this->assertStringContainsString('data-archive-button hidden disabled', $firstPage->getContent());
+        $this->assertStringContainsString('data-bulk-submit="lifecycle" disabled', $firstPage->getContent());
+        $this->assertStringContainsString('<option value="active">Aktif</option>', $firstPage->getContent());
+        $this->assertStringContainsString('<option value="completed">Selesai</option>', $firstPage->getContent());
+        $this->assertStringNotContainsString('<th scope="col">Nomor</th>', $firstPage->getContent());
+        $this->assertStringContainsString('data-participant-status="completed"', $firstPage->getContent());
         $this->assertStringContainsString('page=1', html_entity_decode($firstPage->getContent()));
 
-        $secondPage = $this->get(route('admin.intern-participants.index', ['q' => 'Peserta', 'status' => 'active', 'page' => 2]))
+        $secondPage = $this->get(route('admin.intern-participants.index', ['q' => 'Peserta', 'status' => 'completed', 'page' => 2]))
             ->assertOk();
-        $this->assertSame(1, substr_count($secondPage->getContent(), 'name="user_intern_ids[]"'));
+        $this->assertSame(6, substr_count($secondPage->getContent(), 'name="user_intern_ids[]"'));
         $this->assertStringContainsString('data-select-item', $secondPage->getContent());
         $this->assertStringContainsString('page=2', html_entity_decode($secondPage->getContent()));
 
         $this->post(route('admin.intern-participants.bulk-archive'), ['user_intern_ids' => $ids])->assertRedirect();
         $archivedPage = $this->get(route('admin.intern-participants.archived.index', ['q' => 'Peserta', 'page' => 1]))->assertOk();
-        $this->assertSame(15, substr_count($archivedPage->getContent(), 'name="user_intern_ids[]"'));
+        $this->assertSame(10, substr_count($archivedPage->getContent(), 'name="user_intern_ids[]"'));
         $this->assertStringContainsString('id="bulk-select-all"', $archivedPage->getContent());
         $this->assertStringContainsString('bulk-restore', html_entity_decode($archivedPage->getContent()));
         $this->assertStringContainsString('data-bulk-submit disabled', $archivedPage->getContent());

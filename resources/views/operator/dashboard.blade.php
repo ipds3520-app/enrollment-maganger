@@ -26,18 +26,16 @@
     <section class="card card-tight operator-registration-guide" aria-labelledby="registration-guide-heading">
         <div class="card-header">
             <div>
-                <h2 class="card-title" id="registration-guide-heading">Panduan pendaftaran peserta</h2>
+                <h2 class="card-title" id="registration-guide-heading">Panduan Pendaftaran Peserta Magang</h2>
                 <p class="card-description">Token diterbitkan Admin setelah permohonan disetujui.</p>
             </div>
         </div>
         <ol class="operator-guide-list">
-            <li>Ajukan permohonan dan tunggu statusnya menjadi disetujui.</li>
-            <li>Buka detail permohonan untuk melihat dan menyalin token.</li>
+            <li>Ajukan permohonan melalui <a href="{{ route('operator.internship-requests.index') }}">menu daftar pengajuan.</a></li>
+            <li>Apabila permohonan magang disetujui akan mendapatkan token.</li>
             <li>Bagikan token kepada calon peserta dan arahkan mereka ke <a href="{{ route('intern.register') }}">halaman pendaftaran peserta</a>.</li>
-            <li>Peserta memasukkan token, membuat akun, lalu melengkapi profilnya.</li>
-            <li>Pantau jumlah profil selesai dan sisa kuota pada detail permohonan.</li>
+            <li>Bagikan token pada calon peserta magang.</li>
         </ol>
-        <p class="card-note">Kuota baru berkurang setelah peserta melengkapi dan menyimpan profil.</p>
     </section>
 
     <div class="stat-grid">

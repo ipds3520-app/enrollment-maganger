@@ -97,6 +97,7 @@ class InternProfileController extends Controller
 
                 $applicantChanges = [
                     'name' => $data['name'],
+                    'nik' => $data['nik'],
                     'student_number' => $data['student_number'],
                     'school_major' => $data['school_major'],
                     'phone' => $data['phone'],

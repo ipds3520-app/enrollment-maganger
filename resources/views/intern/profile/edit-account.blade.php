@@ -6,7 +6,7 @@
     <div class="page-header">
         <div class="page-header-main">
             <h1 class="page-title">Edit Data Pribadi</h1>
-            <p class="page-description">Perbarui data pribadi Anda. Email, NIK, dan asal institusi tidak dapat diubah.</p>
+            <p class="page-description">Perbarui data pribadi Anda. Email dan asal kampus/sekolah tidak dapat diubah.</p>
         </div>
     </div>
 
@@ -33,7 +33,7 @@
                 <div class="card-header">
                     <div>
                         <h2 class="card-title">Informasi tetap</h2>
-                        <p class="card-description">Email, NIK, dan institusi terhubung dengan akun serta pengajuan Anda.</p>
+                        <p class="card-description">Email dan institusi terhubung dengan akun serta pengajuan Anda.</p>
                     </div>
                 </div>
 
@@ -41,10 +41,6 @@
                     <div class="detail-item">
                         <p class="detail-label">Email</p>
                         <p class="detail-value readonly-info-label-style">{{ $intern->email }}</p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="detail-label">NIK</p>
-                        <p class="detail-value readonly-info-label-style">{{ $applicant->nik ?: '—' }}</p>
                     </div>
                     <div class="detail-item">
                         <p class="detail-label">Asal kampus/sekolah</p>
@@ -62,6 +58,25 @@
                 </div>
 
                 <div class="form-grid">
+                    <div class="field">
+                        <label for="nik">NIK <span class="req" aria-hidden="true">*</span></label>
+                        <input
+                            id="nik"
+                            type="text"
+                            name="nik"
+                            value="{{ old('nik', $applicant->nik) }}"
+                            data-numeric-only
+                            inputmode="numeric"
+                            maxlength="16"
+                            pattern="[0-9]{16}"
+                            title="NIK harus terdiri dari tepat 16 angka."
+                            required
+                            @error('nik') aria-invalid="true" @enderror
+                        >
+                        <span class="field-hint">NIK harus terdiri dari tepat 16 digit angka.</span>
+                        @error('nik') <span class="field-error">{{ $message }}</span> @enderror
+                    </div>
+
                     <div class="field">
                         <label for="name">Nama lengkap <span class="req" aria-hidden="true">*</span></label>
                         <input id="name" name="name" value="{{ old('name', $intern->name) }}" maxlength="100" required @error('name') aria-invalid="true" @enderror>
@@ -88,7 +103,7 @@
 
                     <div class="field">
                         <label for="birth_date">Tanggal lahir <span class="req" aria-hidden="true">*</span></label>
-                        <input id="birth_date" type="date" name="birth_date" value="{{ old('birth_date', $applicant->birth_date?->format('Y-m-d')) }}" required @error('birth_date') aria-invalid="true" @enderror>
+                        <input id="birth_date" class="date-input-polished" type="date" name="birth_date" value="{{ old('birth_date', $applicant->birth_date?->format('Y-m-d')) }}" required @error('birth_date') aria-invalid="true" @enderror>
                         @error('birth_date') <span class="field-error">{{ $message }}</span> @enderror
                     </div>
 

@@ -1222,6 +1222,52 @@ svg {
     grid-column: 1 / -1;
 }
 
+.participant-edit-form {
+    display: grid;
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.participant-edit-section {
+    width: 100%;
+    margin: 0;
+    padding: 22px 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.participant-edit-section legend {
+    margin-bottom: 16px;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 650;
+}
+
+.participant-edit-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.participant-edit-note {
+    margin: -6px 0 16px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.field input.participant-readonly-input {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+}
+
+.participant-edit-actions {
+    justify-content: flex-end;
+    margin-top: 0;
+    padding: 16px 24px;
+}
+
 .field {
     display: flex;
     flex-direction: column;
@@ -1453,19 +1499,31 @@ fieldset legend {
     margin-bottom: 16px;
 }
 
+.bulk-control-card {
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
 .bulk-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 0;
     padding: 12px 16px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--surface);
     color: var(--text-secondary);
     font-size: 13px;
+}
+
+.bulk-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
 }
 
 .bulk-checkbox {
@@ -1474,6 +1532,118 @@ fieldset legend {
     margin: 0;
     accent-color: var(--primary);
     cursor: pointer;
+}
+
+.field input[type="date"].date-input-polished {
+    min-height: 46px;
+    padding: 10px 13px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    color-scheme: inherit;
+    accent-color: var(--primary);
+    font-size: 14px;
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.field input[type="date"].date-input-polished:hover {
+    border-color: var(--primary);
+}
+
+.field input[type="date"].date-input-polished:focus-visible {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: var(--ring);
+}
+
+.date-input-polished::-webkit-calendar-picker-indicator {
+    width: 18px;
+    height: 18px;
+    margin-right: -3px;
+    padding: 4px;
+    border-radius: 6px;
+    cursor: pointer;
+    opacity: 0.72;
+    transition: opacity 150ms ease, background-color 150ms ease;
+}
+
+.date-input-polished::-webkit-calendar-picker-indicator:hover {
+    background-color: var(--primary-soft);
+    opacity: 1;
+}
+
+.bulk-status-control select {
+    width: min(100%, 280px);
+    min-width: 220px;
+    min-height: 46px;
+    padding: 10px 42px 10px 13px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    appearance: none;
+    background-color: var(--surface);
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
+        linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
+    background-position:
+        calc(100% - 17px) 50%,
+        calc(100% - 12px) 50%;
+    background-repeat: no-repeat;
+    background-size: 5px 5px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.bulk-status-control select:hover {
+    border-color: var(--primary);
+    background-color: var(--surface-2);
+}
+
+.bulk-status-control select:focus-visible {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: var(--ring);
+}
+
+.bulk-status-control select option {
+    background: var(--surface);
+    color: var(--text);
+}
+
+.bulk-status-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 0 16px 14px;
+}
+
+.bulk-status-control {
+    display: grid;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.bulk-status-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.bulk-toolbar [hidden] {
+    display: none !important;
+}
+
+.bulk-status-panel[hidden] {
+    display: none !important;
 }
 
 .bulk-toolbar .btn:disabled {
@@ -2470,6 +2640,52 @@ body,
     }
 
     .bulk-toolbar .btn {
+        width: 100%;
+    }
+
+    .bulk-toolbar-actions {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        margin-left: 0;
+    }
+
+    .participant-edit-section {
+        padding: 18px 16px;
+    }
+
+    .participant-edit-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+    }
+
+    .participant-edit-actions {
+        padding: 14px 16px;
+    }
+
+    .participant-edit-actions .btn {
+        flex: 1 1 auto;
+    }
+
+    .bulk-status-control,
+    .bulk-status-control select {
+        width: 100%;
+    }
+
+    .bulk-status-control select {
+        min-width: 0;
+    }
+
+    .bulk-status-panel {
+        align-items: stretch;
+    }
+
+    .bulk-status-actions {
+        width: 100%;
+    }
+
+    .bulk-status-actions .btn {
+        flex: 1 1 100%;
         width: 100%;
     }
 

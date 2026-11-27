@@ -142,6 +142,7 @@
                         <input
                             id="birth_date"
                             type="date"
+                            class="date-input-polished"
                             name="birth_date"
                             value="{{ old('birth_date') }}"
                             required

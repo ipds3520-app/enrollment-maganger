@@ -102,6 +102,8 @@ Route::middleware(['auth:admin', 'role:admin,admin'])->group(function () {
             ->whereNumber('userInternId')
             ->name('restore');
         Route::post('/bulk-archive', [InternParticipantController::class, 'bulkArchive'])->name('bulk-archive');
+        Route::post('/bulk-lifecycle', [InternParticipantController::class, 'bulkUpdateLifecycle'])
+            ->name('bulk-lifecycle.update');
         Route::get('/{userInternId}', [InternParticipantController::class, 'show'])
             ->whereNumber('userInternId')
             ->name('show');

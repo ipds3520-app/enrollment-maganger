@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Peserta Terarsip')
+@section('title', 'Peserta Magang Terarsip')
 
 @section('content')
     <div class="page-header">
         <div class="page-header-main">
-            <h1 class="page-title">Peserta Terarsip</h1>
-            <p class="page-description">Daftar akun peserta yang diarsipkan. Profil dan riwayatnya tetap disimpan.</p>
+            <h1 class="page-title">Peserta Magang Terarsip</h1>
+            <p class="page-description">Daftar akun peserta magang yang diarsipkan. Profil dan riwayatnya tetap disimpan.</p>
         </div>
         <div class="page-actions">
             <a class="btn btn-secondary" href="{{ route('admin.intern-participants.index') }}">Kembali ke peserta aktif</a>

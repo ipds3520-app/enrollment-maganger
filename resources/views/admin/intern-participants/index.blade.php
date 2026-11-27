@@ -6,10 +6,10 @@
     <div class="page-header">
         <div class="page-header-main">
             <h1 class="page-title">Kelola Peserta Magang</h1>
-            <p class="page-description">Lihat dan perbarui data peserta yang sudah memiliki akun magang.</p>
+            <p class="page-description">Lihat dan perbarui data peserta magang yang sudah memiliki akun magang.</p>
         </div>
         <div class="page-actions">
-            <a class="btn btn-secondary" href="{{ route('admin.intern-participants.archived.index') }}">Peserta Terarsip</a>
+            <a class="btn btn-secondary" href="{{ route('admin.intern-participants.archived.index') }}">Peserta Magang Terarsip</a>
             <a class="btn btn-secondary" href="{{ route('admin.dashboard') }}">
                 @include('layouts.partials.icon', ['name' => 'arrow-left'])
                 <span>Kembali ke dashboard</span>

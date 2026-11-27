@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $archived ? 'Detail Peserta Terarsip' : 'Detail Peserta Magang')
+@section('title', $archived ? 'Detail Peserta Magang Terarsip' : 'Detail Peserta Magang')
 
 @section('content')
     @php
@@ -15,7 +15,7 @@
 
     <div class="page-header">
         <div class="page-header-main">
-            <h1 class="page-title">{{ $archived ? 'Detail Peserta Terarsip' : 'Detail Peserta Magang' }}</h1>
+            <h1 class="page-title">{{ $archived ? 'Detail Peserta Magang Terarsip' : 'Detail Peserta Magang' }}</h1>
             <p class="page-description">Informasi akun, profil, dan periode magang peserta.</p>
         </div>
         <div class="page-actions">
